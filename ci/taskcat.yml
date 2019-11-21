@@ -1,27 +1,58 @@
-global:
-  marketplace-ami: false
-  owner: quickstart-eng@amazon.com
-  qsname: quickstart-ibm-filenet-content-manager
+general:
+  s3_bucket: aws-quickstart-fncm
+  parameters:
+    KeyPair: aws-quickstart-useast2.pem
+project:
+  name: fncm-aws-taskcat
+  owner: abrakhan@us.ibm.com
   regions:
-    - ap-northeast-1
-    - ap-northeast-2
-    - ap-south-1
-    - ap-southeast-1
-    - ap-southeast-2
-    - ca-central-1
-    - eu-central-1
-    - eu-west-1
-    - sa-east-1
-    - us-east-1
     - us-east-2
-    - us-west-1
-    - us-west-2
-  reporting: true
- 
 tests:
-  quickstart-ibm-filenet-content-managert1:
-    parameter_input: quickstart-ibm-filenet-content-manager-example-params1.json
-    template_file: quickstart-ibm-filenet-content-manager-example1.template
-  quickstart-ibm-filenet-content-managert2:
-    parameter_input: quickstart-ibm-filenet-content-manager-example-params2.json
-    template_file: quickstart-ibm-filenet-content-manager-example2.template
+  default:
+    template: ./templates/quickstart-ibm-filenet-content-manager-master-new-vpc.template.yaml
+    parameters:
+      ADServer1InstanceType: "m5.xlarge"
+      ADServer1NetBIOSName: "DC1"
+      ADServer1PrivateIP: "10.0.0.10"
+      ADServer2InstanceType: "m5.xlarge"
+      ADServer2NetBIOSName: "DC2"
+      ADServer2PrivateIP: "10.0.32.10"
+      AdditionalEKSAdminArns: ""
+      AvailabilityZones: $[taskcat_genaz_3]
+      DBInstanceClass: "db.m5.large"
+      DBInstanceIdentifier: "FNCMORCL"
+      DBName: "P8DB"
+      DBPassword: $[taskcat_genpass_8A]
+      DBUser: "P8Admin"
+      DockerRegistryEntitlementKey: "iamapikey:txwc7v8PhvMVw5cxviJ8H2oUucasOh_a_QgsGXFz_8O6"
+      DomainAdminPassword: $[taskcat_genpass_12A]
+      DomainAdminUser: "Admin"
+      DomainDNSName: "example.com"
+      DomainNetBIOSName: "example"
+      FNCMVersion: "FileNet Content Manager 5.5.3"
+      KeyPairName: "AWS Quickstart - FileNet Content Manager"
+      KubernetesVersion: "1.11"
+      LambdaZipsBucketName: ""
+      NodeGroupName: "Default"
+      NodeInstanceType: "t2.xlarge"
+      NodeVolumeSize: 20
+      NumberOfNodes: 3
+      NumberOfRDGWHosts: 1
+      ORAFilesLocation: "https://aws-quickstart-dbamc.s3.amazonaws.com"
+      ORAVersion: "12.2"
+      PrivateSubnet1CIDR: "10.0.0.0/19"
+      PrivateSubnet2CIDR: "10.0.32.0/19"
+      PrivateSubnet3CIDR: "10.0.64.0/19"
+      PublicSubnet1CIDR: "10.0.128.0/20"
+      PublicSubnet2CIDR: "10.0.144.0/20"
+      PublicSubnet3CIDR: "10.0.160.0/20"
+      QSS3BucketName: "aws-quickstart-fncm"
+      QSS3KeyPrefix: "aws-quickstart-fncm/"
+      RDGWCIDR: "0.0.0.0/0"
+      RDGWInstanceType: "t2.large"
+      RemoteAccessCIDR: "0.0.0.0/0"
+      VPCCIDR: "10.0.0.0/16"
+      awsAccessKeyID: ""
+      awsAccessKeySecret: ""
+      sslCertArn: ""
+      

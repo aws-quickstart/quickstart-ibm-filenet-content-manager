@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create ALBs for FileNet Content Manager components
+Parameters:
+  KubeManifestLambdaArn:
+    Type: String
+  KubeConfigPath:
+    Type: String
+  KubeConfigKmsContext:
+    Type: String
+    Default: "EKSQuickStart"
+  KubeGetLambdaArn:
+    Type: String
+  VPCID:
+    Type: String
+  VPCPublicSubnet1ID:
+    Type: String
+  VPCPublicSubnet2ID:
+    Type: String
+  VPCPublicSubnet3ID:
+    Type: String
+Resources:
+  # Enable Cloudwatch logging
+  FNCMCreateALBsQuickStartLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-FNCMCreateALBsQuickStartLogs'
+      RetentionInDays: 30
+
+
+  # Get ALB URL for CPE
+  getCPELoadBalancerURL:
+    Type: "Custom::KubeGet"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeGetLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Namespace: fncm
+      Name: 'ing/cpe-ingress'
+      JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
+  # Get ALB URL for ICN
+  getICNLoadBalancerURL:
+    Type: "Custom::KubeGet"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeGetLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Namespace: fncm
+      Name: 'ing/icn-ingress'
+      JsonPath: '{.status.loadBalancer.ingress[0].hostname}'   
+Outputs:
+  CPEACCELoadBalancerHTTPSURL:
+    Description: The Application Load Balancer (HTTPS URL) for Content Platform Engine ACCE
+    Value: !Sub "https://${getCPELoadBalancerURL}/acce"
+  NavigatorLoadBalancerHTTPSURL:
+    Description: The Application Load Balancer (HTTPS URL) for Content Platform Engine ACCE
+    Value: !Sub "https://${getICNLoadBalancerURL}/navigator"

@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create FileNet Content Manager repos in ECR, download container images from IBM Production Entitlement Registry, and push to AWS ECR
+Parameters:
+  DockerRegistryEntitlementKey:
+    Description: Entitlement Key from customer for Quick Start to pull docker images
+    Type: String    
+  IAMAPIKeyword:
+    Type: String
+    Description: Keyword specified by the enduser 
+## Conditions ##
+Conditions:
+  # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
+  IsIAMAPIKey: !Equals [ !Ref IAMAPIKeyword, "iamapikey"]    
+Resources:
+  CPERepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: cpe
+  CSSRepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: css
+  ICNRepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: navigator
+  CMISRepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: cmis
+  CRSRepo:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: crs
+Outputs:    
+  CPEArn:
+    Value: !GetAtt CPERepo.Arn
+  CSSArn:
+    Value: !GetAtt CSSRepo.Arn
+  ICNArn:
+    Value: !GetAtt ICNRepo.Arn
+  CMISArn:
+    Value: !GetAtt CMISRepo.Arn
+  CRSArn:
+    Value: !GetAtt CRSRepo.Arn
+  CustomerLogin:
+    Value: !Join
+      - ' '
+      - - 'login -u cp -p'
+        - !Ref DockerRegistryEntitlementKey
+        - 'cp.icr.io'
+  IBMLogin:
+    Condition: IsIAMAPIKey
+    Value: !Join
+      - ' '
+      - - 'login -u iamapikey -p'
+        - !Select ["1", !Split [":", !Ref DockerRegistryEntitlementKey]]
+        - 'cp.icr.io'

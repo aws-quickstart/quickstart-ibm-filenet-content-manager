@@ -1,0 +1,386 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Create CPE and ICN Container files'
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Amazon EC2 Configuration
+        Parameters:
+          - ADServer1PrivateIP
+          - BastionASGName
+      - Label:
+          default: AWS Quick Start configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+      - Label:
+          default: Oracle RDS Configuration
+        Parameters:
+          - DBName
+          - DBPassword
+          - EndpointAddress
+      - Label:
+          default: Microsoft Active Directory Configuration
+        Parameters:
+          - DomainAdminPassword
+          - BaseDN1
+          - BaseDN2
+    ParameterLabels:
+      ADServer1PrivateIP:
+        default: Fixed private IP for DC1
+      BastionASGName:
+        default: Auto Scaling Group Name of the Bastion Host
+      DBName:
+        default: The database name
+      DBPassword:
+        default: The database admin account password
+      EndpointAddress:
+        default: Endpoint address of the Master database
+      DomainAdminPassword:
+        default: Password for the domain admin user
+      BaseDN1:
+        default: Domain name of the forest root domain e.g. example
+      BaseDN2:
+        default: Domain name of the forest root domain e.g. com
+Parameters:
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: aws-quickstart
+    Description: The S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
+    Default: quickstart-ibm-filenet-content-manager/
+    Description: The S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  ORAFilesLocation:
+    Description: Provide the S3 location of the downloaded Oracle client files.
+        E.g., https://aws-quickstart-<mylocation>.s3.amazonaws.com
+        Refer to the deployment guide for more information
+    Type: String
+  DBName:
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '8'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: The database admin account password
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  EndpointAddress:
+    Description: Endpoint address of the Master database
+    Type: String
+  ADServer1PrivateIP:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$
+    Description: Fixed private IP for the first Active Directory server located in Availability Zone 1
+    Type: String
+  DomainAdminPassword:
+    AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
+    Description: Password for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols
+    MaxLength: '32'
+    MinLength: '8'
+    NoEcho: 'true'
+    Type: String
+  BaseDN1:
+    Description: Domain name of the forest root domain e.g. example
+    MaxLength: '255'
+    MinLength: '2'
+    Type: String
+  BaseDN2:
+    Description: Domain name of the forest root domain e.g. com
+    MaxLength: '255'
+    MinLength: '2'
+    Type: String
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+Resources:
+  QuickStartLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-Container_Files'
+      RetentionInDays: 30
+  ContainerConfigDocument:
+    Type: 'AWS::SSM::Document'
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: Create container configuration files
+        parameters:
+          QSS3BucketName:
+            default: !Ref QSS3BucketName
+            description: The AWS S3 Bucket Name
+            type: String
+          QSS3KeyPrefix:
+            default: !Ref QSS3KeyPrefix
+            description: The AWS S3 Key Prefix
+            type: String
+          ORAFilesLocation:
+            default: !Ref ORAFilesLocation
+            description: Location of Oracle JDBC driver
+            type: String
+          DBName:
+            default: !Ref DBName
+            description: The database name
+            type: String
+          DBPassword:
+            default: !Ref DBPassword
+            description: The database admin account password
+            type: String
+          EndpointAddress:
+            default: !Ref EndpointAddress
+            description: Endpoint address of the Master database
+            type: String
+          ADServer1PrivateIP:
+            default: !Ref ADServer1PrivateIP
+            description: Fixed private IP for the first Active Directory server located in Availability Zone 1
+            type: String
+          DomainAdminPassword:
+            default: !Ref DomainAdminPassword
+            description: Password for the AD domain admin user
+            type: String
+          BaseDN1:
+            default: !Ref BaseDN1
+            description: Fully qualified domain name of the forest root domain
+            type: String
+          BaseDN2:
+            default: !Ref BaseDN2
+            description: Fully qualified domain name of the forest root domain
+            type: String
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: downloadSecUtilsFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/securityUtility.zip'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_securityUtility.zip'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadLdapFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/ldap.xml'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_ldap.template'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadDriverFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/OraJDBCDriver.xml'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_OraJDBCDriver.template'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadJDBCDriver
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/ojdbc8.jar'
+                    - '{{ORAFilesLocation}}/ojdbc8.jar'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadGcdFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/GCD.xml'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_GCD.template'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadObjectstoreFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/OS1.xml'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_OS1.template'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadNavigatorFile
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/ICNDS.xml'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_ICNDS.template'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadDatabaseScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/FNCM_container_database_files.sh'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_container_database_files.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadLdapScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/FNCM_container_ldap_files.sh'
+                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_container_ldap_files.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: setFilePermissions
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chown"'
+                    - '-R ec2-user:ec2-user /home/ec2-user'
+                    - ';'
+                    - '"chmod"'
+                    - '755 /home/ec2-user/FNCM_container*.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: runDatabaseScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/home/ec2-user/FNCM_container_database_files.sh"'
+                    - '{{DBName}}'
+                    - '{{DBPassword}}'
+                    - '{{EndpointAddress}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: runLdapScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/home/ec2-user/FNCM_container_ldap_files.sh"'
+                    - '{{ADServer1PrivateIP}}'
+                    - '{{DomainAdminPassword}}'
+                    - '{{BaseDN1}}'
+                    - '{{BaseDN2}}'
+              workingDirectory: '/home/ec2-user'
+  SSMSendCommandPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: '*'
+  SSMSendCommandLambdaRole:
+    DependsOn:
+      - SSMSendCommandPolicy
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Ref SSMSendCommandPolicy
+  ExecuteContainerConfigDocumentLambda:
+    Type: 'AWS::Lambda::Function'
+    DependsOn:
+      - ContainerConfigDocument
+      - SSMSendCommandLambdaRole
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.7
+      Code:
+        ZipFile: !Join
+          - |+
+
+          - - import boto3
+            - 'import os, time,json'
+            - import cfnresponse
+            - import logging
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            cfnresponse.send(event, context, status, {})'
+            - '        else:'
+            - '            ssm = boto3.client(''ssm'')'
+            - ''
+            - '            asg = boto3.client(''autoscaling'')'
+            - '            asg_name = event[''ResourceProperties''][''BastionASGName'']'
+            - '            responseAsg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])'
+            - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
+            - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
+            - '            responseData = {}'
+            - ''
+            - '            response=ssm.send_command('
+            - '                InstanceIds = [instanceId],'
+            - '                DocumentName=ssmDocument,'
+            - '                TimeoutSeconds=3600,'
+            - '                Comment=''Create Container configuration files'','
+            - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True, ''CloudWatchLogGroupName'': ''QuickStartLogs''},'
+            - '                MaxConcurrency=''50'','
+            - '                MaxErrors=''5'','
+            - '            )'
+            - ''
+            - '            cmdId = response[''Command''][''CommandId'']'
+            - '            responseData[''CommandId''] = cmdId'
+            - '            print(''Started object creation in CommandId: '' + cmdId)'
+            - '            print(''Bastion Host Instance: '' + instanceId)'
+            - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+      Description: Executes Oracle Schema creation SQL script on Bastion host
+      MemorySize: 320
+      Timeout: 180
+      Role: !GetAtt
+        - SSMSendCommandLambdaRole
+        - Arn
+  ExecuteContainerConfigDocument:
+    Type: 'Custom::ExecuteContainerConfigDocument'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt
+        - ExecuteContainerConfigDocumentLambda
+        - Arn
+      SSMDocument: !Ref ContainerConfigDocument
+      BastionASGName: !Ref BastionASGName
+      QuickStartLogs: !Ref QuickStartLogs

@@ -1,0 +1,21 @@
+<server>
+	<dataSource id="FNGCDDS" jndiName="FNGCDDS" isolationLevel="TRANSACTION_READ_COMMITTED" type="javax.sql.DataSource">
+		<jdbcDriver libraryRef="OracleLib"/>
+		<properties.oracle URL="jdbc:oracle:thin:@rds_endpoint:1521:rds_db"
+    	user="gcduser"
+			password="rds_password"
+		/>
+		<connectionManager  enableSharingForDirectLookups="false"/>
+                <!-- connectionManager globalConnectionTypeOverride="unshared" / -->
+	</dataSource>
+
+	<dataSource id="FNGCDDSXA" jndiName="FNGCDDSXA" isolationLevel="TRANSACTION_READ_COMMITTED" type="javax.sql.XADataSource" supplementalJDBCTrace="true">
+		<properties.oracle URL="jdbc:oracle:thin:@rds_endpoint:1521:rds_db"
+    	user="gcduser"
+			password="rds_password"
+		/>
+		<connectionManager enableSharingForDirectLookups="true"/>
+                <!-- connectionManager globalConnectionTypeOverride="unshared" / -->
+		<jdbcDriver libraryRef="OracleLib"/>
+	</dataSource>
+</server>
