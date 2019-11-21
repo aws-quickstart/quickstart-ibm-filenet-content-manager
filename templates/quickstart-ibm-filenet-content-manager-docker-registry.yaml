@@ -1,0 +1,451 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create FileNet Content Manager repos in ECR, download container images from IBM Production Entitlement Registry, and push to AWS ECR
+Parameters:
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+  DockerRegistryEntitlementKey:
+    Description: Paste the Entitlement Key here for Quick Start to pull docker images
+    Type: String    
+  CPERepoARN:
+    Description: CPE docker repo from ECR
+    Type: String
+  ECRRegion:
+    Description: Region where ECR is located
+    Type: String
+  ECROrg:
+    Description: The AWS organization where ECR is located
+    Type: String
+  awsAccessKeyID:
+    NoEcho: 'true'
+    Description: The AWS Access Key to access your Elastic Container Registry (ECR).  
+      The docker container repositories is where the FileNet Content Manager 
+      docker containers will reside.  The AWS Access Key looks something like AKIAYECXQS5NKIV4G5H3
+    Type: String
+    MinLength: '20'
+  awsAccessKeySecret:
+    NoEcho: 'true'
+    Description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
+      It looks something like i+YpKXYgSluUMn9vgt4mA12RGURtZ2nmHZ99RU8
+    Type: String
+    MinLength: '20'
+  # IAMAPIKeyword:
+  #   Type: String
+  #   Description: Entitlement Key
+  FinalLogin:
+    Type: String
+    Description: Final Login string
+
+## Conditions ##
+# Conditions:
+#   # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
+#   IsIAMAPIKey: !Equals [ !Ref IAMAPIKeyword, "iamapikey"]    
+
+Resources:
+  LoginPullPushContainers:
+    Type: 'AWS::SSM::Document'
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: Pull docker images from IBM Entitlement Registry and upload to ECR
+        parameters:
+          DockerRegistryEntitlementKey:
+            default: !Ref DockerRegistryEntitlementKey
+            description: The Production Docker Registry Entitlement Key entered by customer
+            type: String
+          ECRRegion:
+            default: !Ref ECRRegion
+            description: Region where ECR is located
+            type: String
+          ECROrg:
+            default: !Ref ECROrg
+            description: The AWS organization where ECR is located
+            type: String            
+          FinalLogin:
+            default: !Ref FinalLogin
+            description: The final login string
+            type: String
+          awsAccessKeyIDString:
+            default: !Ref awsAccessKeyID
+            description: The AWS Access Key to access your Elastic Container Registry (ECR).  
+              The docker container repositories is where the FileNet Content Manager 
+              docker containers will reside.  The AWS Access Key looks something like AKIAYECXQS5NKIV4G5H3
+            type: String
+          awsAccessKeySecretString:
+            default: !Ref awsAccessKeySecret
+            description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
+              It looks something like i+YpKXYgSluUMn9vgt4mA12RGURtZ2nmHZ99RU8
+            type: String
+          CPERepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/cpe:ga-553-p8cpe-if001'
+            type: String
+          ICNRepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/navigator:ga-306-icn-if002'
+            type: String                
+          CMISRepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/cmis:ga-304-cmis-if008'
+            type: String                
+          CSSRepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/css:ga-553-p8css-if001'
+            type: String                
+          CRSRepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/crs:ga-553-p8cgql-if001'
+            type: String                
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: DockerLoginIBMRegistry
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - '{{FinalLogin}}'
+                    # - '-u iamapikey'
+                    # - '-p {{DockerRegistryEntitlementKey}}'
+                    # - 'cp.icr.io'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: PullCSSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/css:ga-553-p8css-if001'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: PullCPEContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cpe:ga-553-p8cpe-if001'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: PullICNContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'pull cp.icr.io/cp/cp4a/ban/navigator:ga-306-icn-if002'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: PullCMISContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if008'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: PullCQLContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/crs:ga-553-p8cgql-if001'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: TagCSSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/css:ga-553-p8css-if001 {{CSSRepoURI}}'
+              workingDirectory: '/home/ec2-user'            
+          - action: 'aws:runShellScript'
+            name: TagCPEContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cpe:ga-553-p8cpe-if001 {{CPERepoURI}}'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: TagICNContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'tag cp.icr.io/cp/cp4a/ban/navigator:ga-306-icn-if002 {{ICNRepoURI}}'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: TagCMISContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if008 {{CMISRepoURI}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: TagCRSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/crs:ga-553-p8cgql-if001 {{CRSRepoURI}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: SetAWSAccessKeyID
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - ' configure set aws_access_key_id {{awsAccessKeyIDString}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: SetAWSSecretAccessKey
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - ' configure set aws_secret_access_key {{awsAccessKeySecretString}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: SetAWSRegion
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - ' configure set default.region {{ECRRegion}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: ExecuteAWSGetECRLogin
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"eval"'
+                    - '`aws ecr get-login --no-include-email`'
+                    - '> /root/docker_login.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: ChangeScriptPermissions
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chmod"'
+                    - 'a+x /root/docker_login.sh'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: ExecuteAWSGetECRLoginScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/root/docker_login.sh"'
+              workingDirectory: '/home/ec2-user'      
+          - action: 'aws:runShellScript'
+            name: PushCSSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{CSSRepoURI}}'
+              workingDirectory: '/home/ec2-user'            
+          - action: 'aws:runShellScript'
+            name: PushCPEContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{CPERepoURI}}'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: PushICNContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{ICNRepoURI}}'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: pushCMISContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{CMISRepoURI}}'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: PushCRSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{CRSRepoURI}}'
+              workingDirectory: '/home/ec2-user'
+  dbamcSSMSendCommandPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: '*'
+  dbamcSSMSendCommandLambdaRole:
+    DependsOn:
+      - dbamcSSMSendCommandPolicy
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Ref dbamcSSMSendCommandPolicy
+  dbamcExecuteLoginPullPushContainersDocumentLambda:
+    Type: 'AWS::Lambda::Function'
+    DependsOn:
+      - LoginPullPushContainers
+      - dbamcSSMSendCommandLambdaRole
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.7
+      Code:
+        ZipFile: !Join
+          - |+
+
+          - - import boto3
+            - 'import os, time,json'
+            - import cfnresponse
+            - import logging
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            cfnresponse.send(event, context, status, {})'
+            - '        else:'
+            - '            ssm = boto3.client(''ssm'')'
+            - ''
+            - '            asg = boto3.client(''autoscaling'')'
+            - '            asg_name = event[''ResourceProperties''][''BastionASGName'']'
+            - '            responseAsg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])'
+            - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
+            - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
+            - '            responseData = {}'
+            - ''
+            - '            response=ssm.send_command('
+            - '                InstanceIds = [instanceId],'
+            - '                DocumentName=ssmDocument,'
+            - '                TimeoutSeconds=3600,'
+            - '                Comment=''Pulling docker images, tagging images, and pushing to AWS ECR'','
+            - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True},'
+            - '                MaxConcurrency=''50'','
+            - '                MaxErrors=''5'','
+            - '            )'
+            - ''
+            - '            cmdId = response[''Command''][''CommandId'']'
+            - '            responseData[''CommandId''] = cmdId'
+            - '            print(''Started object creation in CommandId: '' + cmdId)'
+            - '            print(''Bastion Host Instance: '' + instanceId)'
+            - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+      Description: Pulling docker images, tagging images, and pushing to AWS ECR
+      MemorySize: 320
+      Timeout: 180
+      Role: !GetAtt
+        - dbamcSSMSendCommandLambdaRole
+        - Arn
+  dbamcExecutedbamcConfigObjectsDocument1:
+    Type: 'Custom::dbamcExecutedbamcConfigObjectsDocument1'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt
+        - dbamcExecuteLoginPullPushContainersDocumentLambda
+        - Arn
+      SSMDocument: !Ref LoginPullPushContainers
+      BastionASGName: !Ref BastionASGName
+Outputs:
+  CPERepoURI:
+    Value: !Join
+      - ''
+      - - !Ref ECROrg
+        - '.dkr.ecr.'
+        - !Ref ECRRegion
+        - '.amazonaws.com/cpe:ga-553-p8cpe-if001'
+  ICNRepoURI:
+    Value: !Join
+      - ''
+      - - !Ref ECROrg
+        - '.dkr.ecr.'
+        - !Ref ECRRegion
+        - '.amazonaws.com/navigator:ga-306-icn-if002'
+  CMISRepoURI:
+    Value: !Join
+      - ''
+      - - !Ref ECROrg
+        - '.dkr.ecr.'
+        - !Ref ECRRegion
+        - '.amazonaws.com/cmis:ga-304-cmis-if008'
+  CSSRepoURI:
+    Value: !Join
+      - ''
+      - - !Ref ECROrg
+        - '.dkr.ecr.'
+        - !Ref ECRRegion
+        - '.amazonaws.com/css:ga-553-p8css-if001'
+  CRSRepoURI:
+    Value: !Join
+      - ''
+      - - !Ref ECROrg
+        - '.dkr.ecr.'
+        - !Ref ECRRegion
+        - '.amazonaws.com/crs:ga-553-p8cgql-if001'

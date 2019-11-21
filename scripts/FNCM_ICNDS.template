@@ -1,0 +1,11 @@
+<server>
+	<dataSource id="ECMClientDS" jndiName="ECMClientDS" isolationLevel="TRANSACTION_READ_COMMITTED" type="javax.sql.DataSource">
+		<jdbcDriver libraryRef="OracleLib"/>
+		<properties.oracle URL="jdbc:oracle:thin:@rds_endpoint:1521:rds_db"
+			user="nexususer"
+			password="rds_password"
+			resultSetHoldability="HOLD_CURSORS_OVER_COMMIT"
+		/>
+	<!-- connectionManager globalConnectionTypeOverride="unshared" / -->
+	</dataSource>
+</server>

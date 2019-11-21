@@ -1,0 +1,17 @@
+<server>
+	<ldapRegistry id="AWSAD" realm="defaultRealm"
+		host="ad_hostname" 
+		baseDN="DC=ad_basedn1,DC=ad_basedn2"
+		port="389"
+		ldapType="Microsoft Active Directory"
+		bindDN="CN=P8Admin,CN=Users,DC=ad_basedn1,DC=ad_basedn2"
+		sslEnabled="False"
+		bindPassword="ad_password">
+		<activedFilters
+			userFilter="(&amp;(objectClass=person)(cn=%v))"
+			groupFilter="(&amp;(objectClass=group)(cn=%v))"
+                        userIdMap="person:cn"
+                        groupIdMap="*:cn">
+		</activedFilters>
+	</ldapRegistry>
+</server>

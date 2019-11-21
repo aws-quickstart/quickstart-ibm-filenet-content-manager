@@ -1,0 +1,1531 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploys FileNet Content Manager (FNCM+BAN) into an existing Kubernetes Cluster (qs-1pb1dqsjr)
+Parameters:
+  KubeManifestLambdaArn:
+    Type: String
+  KubeConfigPath:
+    Type: String
+  KubeConfigKmsContext:
+    Type: String
+    Default: "EKSQuickStart"
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+  CPERepoURI:
+    Type: String
+  ICNRepoURI:
+    Type: String
+  CMISRepoURI:
+    Type: String
+  CSSRepoURI:
+    Type: String
+  CRSRepoURI:
+    Type: String
+  EKSClusterName:
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    Default: aws-quickstart
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/.]*$
+    Default: aws-quickstart-fncm/
+    Type: String
+  sslCertArn:
+    Type: String
+Resources:
+  # Enable Cloudwatch logging
+  fncmQuickStartLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-BastionPVMounts'
+      RetentionInDays: 30
+  # Create "fncm" namespace for the deployment
+  fncmCreateNamespace:
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: fncm
+  # Create service account          
+  fncmCreateServiceAccount:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: fncm-account
+          namespace: fncm
+  # Create Role Binding          
+  fncmCreateRoleBinding:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        kind: RoleBinding
+        apiVersion: rbac.authorization.k8s.io/v1
+        metadata:
+          name: fncm-role-binding
+          namespace: fncm
+        subjects:
+        - kind: ServiceAccount
+          name: fncm-account
+          namespace: fncm
+        roleRef:
+          kind: ClusterRole
+          name: fncm-role
+          apiGroup: rbac.authorization.k8s.io
+  # Create Roles          
+  fncmCreateRole:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        kind: ClusterRole
+        apiVersion: rbac.authorization.k8s.io/v1
+        metadata:
+           name: fncm-role
+        rules:
+          - apiGroups: [""]
+            resources: ["pods", "pods/exec"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["persistentvolumes"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["persistentvolumeclaims"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["storage.k8s.io"]
+            resources: ["storageclasses"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["events"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["apiextensions.k8s.io"]
+            resources: ["customresourcedefinitions"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["volumesnapshot.external-storage.k8s.io"]
+            resources: ["volumesnapshots"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["volumesnapshot.external-storage.k8s.io"]
+            resources: ["volumesnapshotdatas"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["configmaps"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["services"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["nodes"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: ["*"]
+            resources: ["deployments", "deployments/extensions"]
+            verbs: ["list", "get", "watch", "patch", "update", "initialize"]
+          - apiGroups: ["*"]
+            resources: ["statefulsets", "statefulsets/extensions"]
+            verbs: ["list", "get", "watch", "create", "patch", "update", "initialize"]
+          - apiGroups: ["*"]
+            resources: ["*"]
+            verbs: ["list", "get", "watch", "create", "patch", "update", "initialize"]
+  CreateALBIngressControllerClusterRole:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        kind: ClusterRole
+        apiVersion: rbac.authorization.k8s.io/v1
+        metadata:        
+          name: alb-ingress-controller
+          labels:
+            app: alb-ingress-controller
+        rules:
+          - apiGroups: ["", "extensions"]
+            resources: ["configmaps", "endpoints", "events", "ingresses", "ingresses/status", "services"]
+            verbs: ["get", "list", "watch", "create", "update", "patch"]
+          - apiGroups: ["", "extensions"]
+            resources: ["nodes","pods", "secrets","services", "namespaces"]
+            verbs: ["get", "list", "watch"]
+  CreateALBIngressControllerClusterRoleBinding:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        kind: ClusterRoleBinding
+        apiVersion: rbac.authorization.k8s.io/v1
+        metadata:
+          labels:
+            app: alb-ingress-controller
+          name: alb-ingress-controller
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: alb-ingress-controller
+        subjects:
+          - kind: ServiceAccount
+            name: alb-ingress
+            namespace: kube-system
+  CreateServiceAccountALBIngressController:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          labels:
+            app: alb-ingress-controller
+          name: alb-ingress
+          namespace: kube-system     
+  ALBIngressControllerDeploymentStack:
+    DependsOn: CreateServiceAccountALBIngressController
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Cluster name
+      EKSClusterName: !Ref EKSClusterName      
+      # Kubernetes manifest
+      Manifest: !Sub |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            app: alb-ingress-controller
+          name: alb-ingress-controller
+          namespace: kube-system
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: alb-ingress-controller
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+            type: RollingUpdate
+          template:
+            metadata:
+              labels:
+                app: alb-ingress-controller
+            spec:
+              containers:
+                - args:
+                  - --ingress-class=alb
+                  - --cluster-name=${EKSClusterName}
+                  image: 894847497797.dkr.ecr.us-west-2.amazonaws.com/aws-alb-ingress-controller:v1.0.0
+                  imagePullPolicy: Always
+                  name: server
+                  resources: {}
+                  terminationMessagePath: /dev/termination-log
+              dnsPolicy: ClusterFirst
+              restartPolicy: Always
+              securityContext: {}
+              terminationGracePeriodSeconds: 30
+              serviceAccountName: alb-ingress
+              serviceAccount: alb-ingress
+#########################
+# Creating PVCs for CPE #
+#########################
+  fncmCreateCPEBootstrapPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-bootstrapstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateCPEConfigPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-cfgstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateCPEFilestorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-filestore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+  fncmCreateCPEFNLogPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-fnlogstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  fncmCreateCPEICMRulePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-icmrulesstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateCPELogPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-logstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  fncmCreateCPETextExtPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cpe-textextstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+#########################
+# Creating PVCs for CSS #
+#########################              
+  fncmCreateCSSCfgStorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'csscfgstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateCSSLogStorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'csslogstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+  fncmCreateCSSTempStorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'csstempstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  fncmCreateCSSIndexStorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cssindexstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+  fncmCreateCSSCustomStorePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'csscustomstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+#########################
+# Creating PVCs for ICN #
+#########################
+  fncmCreateICNAsperaPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-asperastore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateICNConfigPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-cfgstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateICNLogPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-logstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  fncmCreateICNPluginPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-pluginstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateICNVWCachePVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-vw-cachestore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  fncmCreateICNVWLogPVC:
+    DependsOn: fncmCreateNamespace
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'icn-vw-logstore-pvc'
+          namespace: !GetAtt fncmCreateNamespace.name
+        spec:
+          storageClassName: efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  #########################################################################################################################  
+  ## 1. Download XML configuration files from S3
+  ## 2. Download database drivers from S3
+  ## 3. Download and execute shell script to (a) mount the PVs (b) copy XML and DB2 files to the appropriate directories
+  #########################################################################################################################
+  fncmMountPVandConfigDocument1:
+    DependsOn: fncmCreateICNVWLogPVC
+    Type: 'AWS::SSM::Document'
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: Create imagePullSecrets, mount PVs, and copy configuration XML files into various directories for the containers
+        parameters:
+          QSS3BucketName:
+            default: !Ref QSS3BucketName
+            description: The AWS S3 Bucket Name
+            type: String
+          QSS3KeyPrefix:
+            default: !Ref QSS3KeyPrefix
+            description: The AWS S3 Key Prefix
+            type: String
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: downloadDBAMCCreatePVScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/dbamc_create_pvs.sh'
+                    - 'https://aws-quickstart-fncm.s3.amazonaws.com/aws-quickstart-fncm/scripts/dbamc_create_pvs.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: setDBAMCFilePermissions
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chmod"'
+                    - '755 /home/ec2-user/dbamc_create_pvs.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: runCreatePVsScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/home/ec2-user/dbamc_create_pvs.sh"'
+              workingDirectory: '/home/ec2-user'              
+          # - action: 'aws:runShellScript'
+          #   name: downloadLDAPXML
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/ldap.xml'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ldap.xml'
+          #     workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadcssSelfSignedServerStore
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"curl"'
+                    - '-o /home/ec2-user/cssSelfsignedServerStore'
+                    - 'https://aws-quickstart-fncm.s3.amazonaws.com/aws-quickstart-fncm/scripts/cssSelfsignedServerStore'
+              workingDirectory: '/home/ec2-user'              
+          # - action: 'aws:runShellScript'
+          #   name: downloadGCDXML
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/GCD.xml'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/GCD.xml'
+          #     workingDirectory: '/home/ec2-user'
+          # - action: 'aws:runShellScript'
+          #   name: downloadOS1XML
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/OS1.xml'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/OS1.xml'
+          #     workingDirectory: '/home/ec2-user'
+          # - action: 'aws:runShellScript'
+          #   name: downloadICNDSXML
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/ICNDS.xml'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ICNDS.xml'
+          #     workingDirectory: '/home/ec2-user'
+          # - action: 'aws:runShellScript'
+          #   name: downloadDB2JDBCDriverXML
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/DB2JCCDriver.xml'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/DB2JCCDriver.xml'
+          #     workingDirectory: '/home/ec2-user'
+          # - action: 'aws:runShellScript'
+          #   name: downloadDB2JDBCDriver
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/db2jcc4.jar'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/db2jcc4.jar'
+          #     workingDirectory: '/home/ec2-user'         
+          # - action: 'aws:runShellScript'
+          #   name: downloadDB2JDBCDriverLicense
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/db2jcc_license_cu.jar'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/db2jcc_license_cu.jar'
+          #     workingDirectory: '/home/ec2-user'
+          # - action: 'aws:runShellScript'
+          #   name: downloadOracleJDBC8Jar
+          #   inputs:
+          #     runCommand:
+          #       - !Join
+          #         - ' '
+          #         - - '"curl"'
+          #           - '-o /home/ec2-user/ojdbc8.jar'
+          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ojdbc8.jar'
+          #     workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: copyConfigurationXMLFiles
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"cp"'
+                    - '/home/ec2-user/GCD.xml /data/ecm/cpe/cfgstore/GCD.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/OS1.xml /data/ecm/cpe/cfgstore/OS1.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/ldap.xml /data/ecm/cpe/cfgstore/ldap.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/cpe/cfgstore/OraJDBCDriver.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/icn/cfgstore/OraJDBCDriver.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/ICNDS.xml /data/ecm/icn/cfgstore/ICNDS.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/ldap.xml /data/ecm/icn/cfgstore/ldap.xml'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/ojdbc8.jar /data/ecm/cpe/cfgstore/ojdbc8.jar'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/ojdbc8.jar /data/ecm/icn/cfgstore/ojdbc8.jar'
+                    - ';'
+                    - '"cp"'
+                    - '/home/ec2-user/cssSelfsignedServerStore /data/ecm/css/cfgstore/cssSelfsignedServerStore'
+              workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: setPVPermissionsAndOwnership
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chown"'
+                    - '-R 50001:root /data'
+                    - ';'
+                    - '"chmod"'
+                    - '-R 775 /data'
+              workingDirectory: '/home/ec2-user'       
+  fncmSSMSendCommandPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: '*'
+  fncmSSMSendCommandLambdaRole:
+    DependsOn:
+      - fncmSSMSendCommandPolicy
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Ref fncmSSMSendCommandPolicy
+  fncmExecuteMountPVandConfigDocumentLambda1:
+    Type: 'AWS::Lambda::Function'
+    DependsOn:
+      - fncmMountPVandConfigDocument1
+      - fncmSSMSendCommandLambdaRole
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.7
+      Code:
+        ZipFile: !Join
+          - |+
+
+          - - import boto3
+            - 'import os, time,json'
+            - import cfnresponse
+            - import logging
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            cfnresponse.send(event, context, status, {})'
+            - '        else:'
+            - '            ssm = boto3.client(''ssm'')'
+            - ''
+            - '            asg = boto3.client(''autoscaling'')'
+            - '            asg_name = event[''ResourceProperties''][''BastionASGName'']'
+            - '            responseAsg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])'
+            - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
+            - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
+            - '            responseData = {}'
+            - ''
+            - '            response=ssm.send_command('
+            - '                InstanceIds = [instanceId],'
+            - '                DocumentName=ssmDocument,'
+            - '                TimeoutSeconds=3600,'
+            - '                Comment=''Mounting PVs, copy database drivers, and copy configuration XML files'','
+            - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True},'
+            - '                MaxConcurrency=''50'','
+            - '                MaxErrors=''5'','
+            - '            )'
+            - ''
+            - '            cmdId = response[''Command''][''CommandId'']'
+            - '            responseData[''CommandId''] = cmdId'
+            - '            print(''Started object creation in CommandId: '' + cmdId)'
+            - '            print(''Bastion Host Instance: '' + instanceId)'
+            - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+      Description: Executes PV creation and mount script on Bastion host
+      MemorySize: 320
+      Timeout: 180
+      Role: !GetAtt
+        - fncmSSMSendCommandLambdaRole
+        - Arn
+  fncmExecuteConfigObjectsDocument1:
+    Type: 'Custom::fncmExecuteConfigObjectsDocument1'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt
+        - fncmExecuteMountPVandConfigDocumentLambda1
+        - Arn
+      SSMDocument: !Ref fncmMountPVandConfigDocument1
+      BastionASGName: !Ref BastionASGName
+##################################################
+# Deploying FNCM services (e.g., CPE, CSS, etc) #
+##################################################
+  fncmCPESServicetack:
+    DependsOn: fncmCreateCPEFilestorePVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: fncm-cpe-svc
+          namespace: fncm
+        spec:
+          ports:
+            - name: http
+              protocol: TCP
+              port: 9080
+              targetPort: 9080
+              # Statically defined nodePort so we know which port to create the ALB with
+              nodePort: 31001
+            - name: https
+              protocol: TCP
+              port: 9443
+              targetPort: 9443
+              # Statically defined nodePort so we know which port to create the ALB with              
+              nodePort: 31002
+          selector:
+              app: ibm-dba-contentservices
+          type: NodePort
+          sessionAffinity: ClientIP
+  fncmCSSServicetack:
+    DependsOn: fncmCreateCPEFilestorePVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: fncm-css-svc
+          namespace: fncm
+        spec:
+          ports:
+            - name: cssdefault
+              protocol: TCP
+              port: 8191
+              targetPort: 8191
+            - name: cssssl
+              protocol: TCP
+              port: 8199
+              targetPort: 8199
+          selector:
+              app: ibm-dba-contentsearch
+          type: ClusterIP
+          sessionAffinity: ClientIP
+  fncmICNServicetack:
+    DependsOn: fncmCreateICNVWLogPVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: fncm-icn-svc
+          namespace: fncm
+        spec:
+          ports:
+            - name: http
+              protocol: TCP
+              port: 9080
+              targetPort: 9080
+              # Statically defined nodePort so we know which port to create the ALB with              
+              nodePort: 31003
+            - name: https
+              protocol: TCP
+              port: 9443
+              targetPort: 9443
+              # Statically defined nodePort so we know which port to create the ALB with              
+              nodePort: 31004
+          selector:
+              app: ibm-dba-navigator
+          type: NodePort
+          sessionAffinity: ClientIP
+##################################################
+# Deploying FNCM pods (e.g., CPE, CSS, etc) #
+##################################################
+  # Deploy CPE container #
+  fncmCPEDeploymentStack:
+    DependsOn: fncmCreateCPEFilestorePVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: apps/v1beta2
+        kind: Deployment
+        metadata:
+          name: fncm-cpe
+          namespace: fncm
+          labels:
+            app: ibm-dba-contentservices
+        spec:
+          replicas: 3
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+            type: RollingUpdate
+          selector:
+            matchLabels:
+              app: ibm-dba-contentservices
+          template:
+            metadata:
+              name: ibm-dba-contentservices
+              labels:
+                app: ibm-dba-contentservices
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - ibm-dba-contentservices
+                        topologyKey: "kubernetes.io/hostname"
+              containers:
+              - name: fncm-cpe
+                image: !Ref CPERepoURI
+                imagePullPolicy: IfNotPresent
+                securityContext:
+                # If deployment on OpenShift and image supports arbitrary uid,
+                # remove runAsUser and pods will run with arbitrarily assigned user ID.
+                  runAsUser: 50001
+                  allowPrivilegeEscalation: true
+                resources:
+                  requests:
+                    memory: 1024Mi
+                    cpu: 500m
+                  limits:
+                    memory: 3072Mi
+                    cpu: 1
+                ports:
+                  - containerPort: 9080
+                    name: http
+                  - containerPort: 9443
+                    name: https
+                env:
+                  - name: "LICENSE"
+                    value: 'accept'
+                  - name: "PRODUCT"
+                    value: 'DBAMC'
+                  - name: "GCDJNDINAME"
+                    value: 'FNGCDDS'
+                  - name: "GCDJNDIXANAME"
+                    value: 'FNGCDDSXA'
+                  - name: "LICENSEMODEL"
+                    value: 'FNCM.CU'
+                readinessProbe:
+                  httpGet:
+                    path: /P8CE/Health
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 180
+                  periodSeconds: 5
+                livenessProbe:
+                  httpGet:
+                    path: /P8CE/Health
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 600
+                  periodSeconds: 5
+                volumeMounts:
+                  - name: cpecfgstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+                  - name: cpelogstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/logs
+                  - name: cpeicmrulesstore
+                    mountPath: /opt/ibm/icmrules
+                  - name: cpefnlogstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/FileNet
+                  - name: cpebootstrapstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/lib/bootstrap
+                  - name: cpetextextstore
+                    mountPath: /opt/ibm/textext
+                  - name: cpefilestore
+                    mountPath: /opt/ibm/asa
+              volumes:
+                  - name: cpecfgstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-cfgstore-pvc
+                  - name: cpelogstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-logstore-pvc
+                  - name: cpeicmrulesstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-icmrulesstore-pvc
+                  - name: cpefnlogstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-fnlogstore-pvc
+                  - name: cpebootstrapstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-bootstrapstore-pvc
+                  - name: cpetextextstore
+                    persistentVolumeClaim: 
+                      claimName: cpe-textextstore-pvc
+                  - name: cpefilestore
+                    persistentVolumeClaim: 
+                      claimName: cpe-filestore-pvc
+  # Deploy CSS container #
+  fncmCSSDeploymentStack:
+    DependsOn: fncmCreateCPEFilestorePVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: apps/v1beta2
+        kind: Deployment
+        metadata:
+          name: fncm-css
+          namespace: fncm
+          labels:
+            app: ibm-dba-contentsearch
+        spec:
+          replicas: 1
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+            type: RollingUpdate
+          selector:
+            matchLabels:
+              app: ibm-dba-contentsearch
+          template:
+            metadata:
+              name: ibm-dba-contentsearch
+              labels:
+                app: ibm-dba-contentsearch
+            spec:
+              imagePullSecrets:
+                - name: docker-registry-secret
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - ibm-dba-contentsearch
+                        topologyKey: "kubernetes.io/hostname"
+              containers:
+              - name: fncm-css
+                image: !Ref CSSRepoURI
+                imagePullPolicy: IfNotPresent
+                securityContext:
+                # If deployment on OpenShift and image supports arbitrary uid,
+                # remove runAsUser and pods will run with arbitrarily assigned user ID.
+                  runAsUser: 50001
+                  allowPrivilegeEscalation: true
+                resources:
+                  requests:
+                    memory: 1024Mi
+                    cpu: 1
+                  limits:
+                    memory: 3072Mi
+                    cpu: 1.5
+                ports:
+                  - containerPort: 8191
+                    name: cssdefault
+                  - containerPort: 8199
+                    name: cssssl
+                readinessProbe:
+                  tcpSocket:
+                    port: 8199
+                  initialDelaySeconds: 60
+                  periodSeconds: 5
+                livenessProbe:
+                  tcpSocket:
+                    port: 8199
+                  initialDelaySeconds: 120
+                  periodSeconds: 5
+                env:
+                  - name: "LICENSE"
+                    value: 'accept'
+                  - name: "PRODUCT"
+                    value: 'DBAMC'
+                  - name: "TZ"
+                    value: 'Etc/UTC'
+                volumeMounts:
+                  - name: csscfgstore
+                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/data"
+                  - name: csslogstore
+                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/log"
+                  - name: csstempstore
+                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/temp"
+                  - name: cssindexstore
+                    mountPath: "/opt/ibm/indexareas"
+                  - name: csscustomstore
+                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/config"
+              volumes:
+                - name: csscfgstore
+                  persistentVolumeClaim:
+                    claimName: csscfgstore-pvc
+                - name: csslogstore
+                  persistentVolumeClaim:
+                    claimName: csslogstore-pvc
+                - name: csstempstore
+                  persistentVolumeClaim:
+                    claimName: csstempstore-pvc
+                - name: cssindexstore
+                  persistentVolumeClaim:
+                    claimName: cssindexstore-pvc
+                - name: csscustomstore
+                  persistentVolumeClaim:
+                    claimName: csscustomstore-pvc
+  # Deploy ICN container #
+  fncmICNDeploymentStack:
+    DependsOn: fncmCreateICNConfigPVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest:
+        apiVersion: apps/v1beta2
+        kind: Deployment
+        metadata:
+          name: fncm-icn
+          namespace: fncm
+          labels:
+            app: ibm-dba-navigator
+        spec:
+          replicas: 3
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+            type: RollingUpdate
+          selector:
+            matchLabels:
+              app: ibm-dba-navigator
+          template:
+            metadata:
+              name: ibm-dba-navigator
+              labels:
+                app: ibm-dba-navigator
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - ibm-dba-navigator
+                        topologyKey: "kubernetes.io/hostname"
+              containers:
+              - name: fncm-icn
+                image: !Ref ICNRepoURI
+                imagePullPolicy: IfNotPresent
+                securityContext:
+                # If deployment on OpenShift and image supports arbitrary uid,
+                # remove runAsUser and pods will run with arbitrarily assigned user ID.
+                  runAsUser: 50001
+                  allowPrivilegeEscalation: true
+                resources:
+                  requests:
+                    memory: 1024Mi
+                    cpu: 1
+                  limits:
+                    memory: 3072Mi
+                    cpu: 1.5
+                ports:
+                  - containerPort: 9080
+                    name: http
+                  - containerPort: 9443
+                    name: https
+                env:
+                  - name: "LICENSE"
+                    value: 'accept'
+                  - name: "PRODUCT"
+                    value: 'DBAMC'
+                  - name: "LICENSEMODEL"
+                    value: 'FNCM.CU'
+                  - name: "JVM_HEAP_XMS"
+                    value: '1024m'
+                  - name: "JVM_HEAP_XMX"
+                    value: '2048m'
+                  - name: "ICNJNDIDS"
+                    value: 'ECMClientDS'
+                  - name: "ICNDBTYPE"
+                    value: 'oracle'
+                  - name: "ICNSCHEMA"
+                    value: 'nexususer'
+                  - name: "ICNTS"
+                    value: 'nexusdata_ts'
+                  - name: "ICNADMIN"
+                    value: "P8Admin"
+                readinessProbe:
+                  httpGet:
+                    path: /navigator
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 180
+                  periodSeconds: 5
+                livenessProbe:
+                  httpGet:
+                    path: /navigator
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 600
+                  periodSeconds: 5
+                volumeMounts:
+                  - name: icncfgstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+                  - name: icnlogstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/logs
+                  - name: icnpluginstore
+                    mountPath: /opt/ibm/plugins
+                  - name: icnvwcachestore
+                    mountPath: /opt/ibm/viewerconfig/cache
+                  - name: icnvwlogstore
+                    mountPath: /opt/ibm/viewerconfig/logs
+                  - name: icnasperastore
+                    mountPath: /opt/ibm/Aspera
+              volumes:
+                  - name: icncfgstore
+                    persistentVolumeClaim: 
+                      claimName: icn-cfgstore-pvc
+                  - name: icnlogstore
+                    persistentVolumeClaim: 
+                      claimName: icn-logstore-pvc
+                  - name: icnpluginstore
+                    persistentVolumeClaim: 
+                      claimName: icn-pluginstore-pvc
+                  - name: icnvwcachestore
+                    persistentVolumeClaim: 
+                      claimName: icn-vw-cachestore-pvc
+                  - name: icnvwlogstore
+                    persistentVolumeClaim: 
+                      claimName: icn-vw-logstore-pvc
+                  - name: icnasperastore
+                    persistentVolumeClaim: 
+                      claimName: icn-asperastore-pvc
+
+  CreateCPELoadBalancer:
+    Type: "Custom::KubeManifest"
+    DependsOn: fncmCPEDeploymentStack
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest: !Sub |
+        apiVersion: extensions/v1beta1
+        kind: Ingress
+        metadata:
+          name: cpe-ingress
+          namespace: fncm
+          annotations:
+            kubernetes.io/ingress.class: alb
+            alb.ingress.kubernetes.io/scheme: internet-facing
+            alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+            alb.ingress.kubernetes.io/certificate-arn: ${sslCertArn}
+          labels:
+            app: cpe-ingress
+        spec:
+          rules:
+            - http:
+                paths:
+                  - path: /*
+                    backend:
+                      serviceName: fncm-cpe-svc
+                      servicePort: 9080
+  CreateICNLoadBalancer:
+    Type: "Custom::KubeManifest"
+    DependsOn: fncmICNDeploymentStack    
+    Version: '1.0'
+    Properties:
+      # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
+      ServiceToken: !Ref KubeManifestLambdaArn
+      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
+      KubeConfigPath: !Ref KubeConfigPath
+      # context for KMS to use when decrypting the file
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      # Kubernetes manifest
+      Manifest: !Sub |
+        apiVersion: extensions/v1beta1
+        kind: Ingress
+        metadata:
+          name: icn-ingress
+          namespace: fncm
+          annotations:
+            kubernetes.io/ingress.class: alb
+            alb.ingress.kubernetes.io/scheme: internet-facing
+            alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+            alb.ingress.kubernetes.io/certificate-arn: ${sslCertArn}
+          labels:
+            app: icn-ingress
+        spec:
+          rules:
+            - http:
+                paths:
+                  - path: /*
+                    backend:
+                      serviceName: fncm-icn-svc
+                      servicePort: 9080

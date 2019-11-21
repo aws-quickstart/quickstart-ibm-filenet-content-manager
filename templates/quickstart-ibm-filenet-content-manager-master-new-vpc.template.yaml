@@ -1,0 +1,798 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploys FileNet Content Manager into a new EKS cluster in a new VPC
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Network configuration
+      Parameters:
+      - AvailabilityZones
+      - VPCCIDR
+      - PrivateSubnet1CIDR
+      - PrivateSubnet2CIDR
+      - PrivateSubnet3CIDR
+      - PublicSubnet1CIDR
+      - PublicSubnet2CIDR
+      - PublicSubnet3CIDR
+      - RemoteAccessCIDR
+# Microsoft Active Directory - Remode Desktop Gateway
+      - RDGWCIDR
+    - Label:
+        default: Amazon EC2 configuration
+      Parameters:
+      - KeyPairName
+      - awsAccessKeyID
+      - awsAccessKeySecret
+      - sslCertArn
+    - Label:
+        default: Amazon EKS configuration
+      Parameters:
+      - NodeInstanceType
+      - NumberOfNodes
+      - NodeGroupName
+      - NodeVolumeSize
+      - AdditionalEKSAdminArns
+      - KubernetesVersion
+    - Label:
+        default: FileNet Content Manager configuration
+      Parameters:
+      - FNCMVersion
+      - DockerRegistryEntitlementKey
+    - Label:
+        default: AWS Quick Start configuration
+      Parameters:
+      - QSS3BucketName
+      - QSS3KeyPrefix
+# Oracke RDS Parameters
+    - Label:
+        default: Oracle RDS configuration
+      Parameters:
+      - ORAFilesLocation
+      - ORAVersion
+      - DBInstanceIdentifier
+      - DBInstanceClass
+      - DBName
+      - DBUser
+      - DBPassword
+# Active Directory Network Parameters
+    - Label:
+        default: Active Directory EC2 configuration
+      Parameters:
+      - ADServer1InstanceType
+      - ADServer1NetBIOSName
+      - ADServer1PrivateIP
+      - ADServer2InstanceType
+      - ADServer2NetBIOSName
+      - ADServer2PrivateIP
+      - RDGWInstanceType
+# Active Directory Instance Parameters
+    - Label:
+        default: Microsoft Active Directory Configuration
+      Parameters:
+      - DomainDNSName
+      - DomainNetBIOSName
+      - DomainAdminUser
+      - DomainAdminPassword
+      - NumberOfRDGWHosts
+    ParameterLabels:
+      AvailabilityZones:
+        default: Availability Zones
+      KeyPairName:
+        default: SSH key name
+      awsAccessKeyID:
+        default: AWS Access Key ID
+      awsAccessKeySecret:
+        default: AWS Secret Access Key
+      sslCertArn:
+        default: SSL/TLS certificate ARN
+      PrivateSubnet1CIDR:
+        default: Private subnet 1 CIDR
+      PrivateSubnet2CIDR:
+        default: Private subnet 2 CIDR
+      PrivateSubnet3CIDR:
+        default: Private subnet 3 CIDR
+      PublicSubnet1CIDR:
+        default: Public subnet 1 CIDR
+      PublicSubnet2CIDR:
+        default: Public subnet 2 CIDR
+      PublicSubnet3CIDR:
+        default: Public subnet 3 CIDR
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      RemoteAccessCIDR:
+        default: Allowed external access CIDR
+      AdditionalEKSAdminArns:
+        default: Additional EKS admin ARNs
+      KubernetesVersion:
+        default: Kubernetes version
+      VPCCIDR:
+        default: VPC CIDR
+      NodeInstanceType:
+        default: Nodes instance type
+      NumberOfNodes:
+        default: Number of nodes
+      NodeGroupName:
+        default: Node group name
+      NodeVolumeSize:
+        default: Node volume size
+      FNCMVersion:
+        default: Version of FileNet Content Manager
+      DockerRegistryEntitlementKey:
+        default: IBM Entitlement Registry - Entitlement Key
+# Oracle RDS Parameters
+      ORAFilesLocation:
+        default: Location of the downloaded Oracle client
+      ORAVersion:
+        default: Oracle Database Version
+      DBInstanceIdentifier:
+        default: Oracle Database Instance Name
+      DBInstanceClass:
+        default: Oracle Database Instance Type
+      DBName:
+        default: Oracle Database Name
+      DBUser:
+        default: Oracle Database Admin User Name
+      DBPassword:
+        default: Oracle Database Admin User Password
+# Microsoft Active Directory Parameters
+      ADServer1InstanceType:
+        Default: Domain Controller 1 Instance Type
+      ADServer1NetBIOSName:
+        default: Domain Controller 1 NetBIOS Name
+      ADServer1PrivateIP:
+        default: Domain Controller 1 Private IP Address
+      ADServer2InstanceType:
+        default: Domain Controller 2 Instance Type
+      ADServer2NetBIOSName:
+        default: Domain Controller 2 NetBIOS Name
+      ADServer2PrivateIP:
+        default: Domain Controller 2 Private IP Address
+      DomainAdminPassword:
+        default: Domain Admin Password
+      DomainAdminUser:
+        default: Domain Admin User Name
+      DomainDNSName:
+        default: Domain DNS Name
+      DomainNetBIOSName:
+        default: Domain NetBIOS Name
+      NumberOfRDGWHosts:
+        default: Number of RDGW hosts
+      RDGWInstanceType:
+        default: Remote Desktop Gateway Instance Type
+      RDGWCIDR:
+        default: Allowed Remote Desktop Gateway External Access CIDR
+Parameters:
+  AvailabilityZones:
+    Description: The list of Availability Zones to use for the subnets in the VPC. Three
+      Availability Zones are used for this deployment, and the logical order of your
+      selections is preserved.
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+  KeyPairName:
+    Description: The name of an existing public/private key pair, which allows you
+      to securely connect to your instance after it launches.
+    Type: AWS::EC2::KeyPair::KeyName
+  awsAccessKeyID:
+    NoEcho: 'true'
+    Description: The AWS Access Key to access your Elastic Container Registry (ECR), where FileNet Content Manager docker images will reside.
+    Type: String
+    MinLength: '20'
+  awsAccessKeySecret:
+    NoEcho: 'true'
+    Description: The AWS Secret Access Key that corresponds to the Access Key ID above.
+    Type: String
+    MinLength: '20'
+  sslCertArn:
+    Type: String
+    MinLength: '20'
+    Description: SSL/TLS certificate managed by IAM or ACM (e.g., arn:aws:acm:us-east-1:558510413658:certificate/xxxxx-xxxx-xxxx-xxxxx).  Required for secured HTTPS communication.
+  PrivateSubnet1CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.0.0/19
+    Description: The CIDR block for the private subnet 1 located in Availability Zone 1.
+    Type: String
+  PrivateSubnet2CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.32.0/19
+    Description: The CIDR block for the private subnet 2 located in Availability Zone 2.
+    Type: String
+  PrivateSubnet3CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.64.0/19
+    Description: The CIDR block for the private subnet 3 located in Availability Zone 3.
+    Type: String
+  PublicSubnet1CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.128.0/20
+    Description: The CIDR block for the public (DMZ) subnet 1 located in Availability Zone 1.
+    Type: String
+  PublicSubnet2CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: The CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.144.0/20
+    Description: The CIDR block for the public (DMZ) subnet 2 located in Availability Zone 2.
+    Type: String
+  PublicSubnet3CIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.160.0/20
+    Description: The CIDR block for the public (DMZ) subnet 3 located in Availability Zone 3.
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: aws-quickstart
+    Description: The S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
+    Default: aws-quickstart-fncm/
+    Description: The S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  RemoteAccessCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/x
+    Description: The CIDR IP range that is permitted to access the deployment. CIDR block parameter must be in the form x.x.x.x/x.  We recommend that you set this value to a trusted IP range.
+      Otherwise, specify 0.0.0.0/0 in order to access from anywhere on the internet.
+    Type: String
+  VPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC.
+    Type: String
+  AdditionalEKSAdminArns:
+    Default: ""
+    Description: "[OPTIONAL] The comma-separated list of IAM users/role Amazon Resource Names (ARNs) to be granted admin access to the EKS cluster."
+    Type: CommaDelimitedList
+  NodeInstanceType:
+    Default: t2.xlarge
+    AllowedValues:
+    - t2.small
+    - t2.medium
+    - t2.large
+    - t2.xlarge
+    - t2.2xlarge
+    - t3.nano
+    - t3.micro
+    - t3.small
+    - t3.medium
+    - t3.large
+    - t3.xlarge
+    - t3.2xlarge
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - m5.large
+    - m5.xlarge
+    - m5.2xlarge
+    - m5.4xlarge
+    - m5.12xlarge
+    - m5.24xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    - c5.large
+    - c5.xlarge
+    - c5.2xlarge
+    - c5.4xlarge
+    - c5.9xlarge
+    - c5.18xlarge
+    - i3.large
+    - i3.xlarge
+    - i3.2xlarge
+    - i3.4xlarge
+    - i3.8xlarge
+    - i3.16xlarge
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - r4.large
+    - r4.xlarge
+    - r4.2xlarge
+    - r4.4xlarge
+    - r4.8xlarge
+    - r4.16xlarge
+    - x1.16xlarge
+    - x1.32xlarge
+    - p2.xlarge
+    - p2.8xlarge
+    - p2.16xlarge
+    - p3.2xlarge
+    - p3.8xlarge
+    - p3.16xlarge
+    - r5.large
+    - r5.xlarge
+    - r5.2xlarge
+    - r5.4xlarge
+    - r5.12xlarge
+    - r5.24xlarge
+    - r5d.large
+    - r5d.xlarge
+    - r5d.2xlarge
+    - r5d.4xlarge
+    - r5d.12xlarge
+    - r5d.24xlarge
+    - z1d.large
+    - z1d.xlarge
+    - z1d.2xlarge
+    - z1d.3xlarge
+    - z1d.6xlarge
+    - z1d.12xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+    Description: The type of EC2 instance for the node instances.
+    Type: String
+  NumberOfNodes:
+    Default: 3
+    Description: The number of Amazon EKS node instances.
+    Type: Number
+  NodeGroupName:
+    Default: Default
+    Description: The name for Amazon EKS node group.
+    Type: String
+  NodeVolumeSize:
+    Default: 20
+    Description: The size for the node's root EBS volumes.
+    Type: String
+  LambdaZipsBucketName:
+    Description: '[OPTIONAL] The name of the bucket  where the Lambda .zip files should be placed;
+        if left blank, a bucket will be created.'
+    Type: String
+    Default: ''
+  KubernetesVersion:
+    Description: The Kubernetes version of the Amazon EKS cluster.
+    Type: String
+    AllowedValues: [ "1.11", "1.10" ]
+    Default: "1.11"
+  FNCMVersion:
+    Type: String
+    Default: "FileNet Content Manager 5.5.3"
+    AllowedValues: [ "FileNet Content Manager 5.5.3" ]
+    Description: The version of FileNet Content Manager to be deployed by this Quick Start.
+  DockerRegistryEntitlementKey:
+    Type: String
+    AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
+    MinLength: '8'
+    Description: Copy/paste the IBM entitlement key here for Quick Start to pull FileNet Content Manager docker images from IBM Entitlement Registry.  To obtain Entitlement Key, go here https://myibm.ibm.com/products-services/containerlibrary
+# Oracle RDS Database Parameters
+  ORAFilesLocation:
+    Description: Provide the S3 location of the downloaded Oracle client files.
+        E.g., https://aws-quickstart-<mylocation>.s3.amazonaws.com
+        Refer to the deployment guide for more information
+    Type: String
+  ORAVersion:
+    AllowedValues: [ "12.1", "12.2" ]
+    Default: "12.2"
+    Description: Amazon RDS Oracle version
+    Type: String
+  DBInstanceClass:
+    AllowedValues:
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m5.large
+      - db.m5.xlarge
+      - db.m5.2xlarge
+    Default: db.m5.large
+    Description: Amazon RDS instance type for the Oracle Database instance
+    Type: String
+  DBInstanceIdentifier:
+    Default: FNCMORCL
+    Description: The database instance name
+    Type: String
+    MinLength: '1'
+    MaxLength: '8'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBName:
+    Default: P8DB
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '8'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBUser:
+    Default: P8Admin
+    NoEcho: 'false'
+    Description: The database admin account username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: The database admin account password. Must be at least 8 characters containing letters, numbers only
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+# Active Directory Parameters
+  ADServer1InstanceType:
+    AllowedValues:
+      - t2.large
+      - t3.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+    Default: m5.xlarge
+    Description: Amazon EC2 instance type for the first Active Directory instance
+    Type: String
+  ADServer1NetBIOSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: DC1
+    Description: NetBIOS name of the first Active Directory server (up to 15 characters)
+    MaxLength: '15'
+    MinLength: '1'
+    Type: String
+  ADServer1PrivateIP:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$
+    Default: 10.0.0.10
+    Description: Fixed private IP for the first Active Directory server located in Availability Zone 1
+    Type: String
+  ADServer2InstanceType:
+    AllowedValues:
+      - t2.large
+      - t3.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+    Default: m5.xlarge
+    Description: Amazon EC2 instance type for the second Active Directory instance
+    Type: String
+  ADServer2NetBIOSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: DC2
+    Description: NetBIOS name of the second Active Directory server (up to 15 characters)
+    MaxLength: '15'
+    MinLength: '1'
+    Type: String
+  ADServer2PrivateIP:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$
+    Default: 10.0.32.10
+    Description: Fixed private IP for the second Active Directory server located in Availability Zone 2
+    Type: String
+  DomainAdminPassword:
+    AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
+    Description: Password for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols
+    MaxLength: '32'
+    MinLength: '8'
+    NoEcho: 'true'
+    Type: String
+  DomainAdminUser:
+    AllowedPattern: '[a-zA-Z0-9]*'
+    Default: Admin
+    Description: User name for the account that will be added as Domain Administrator.
+      This is separate from the default "Administrator" account
+    MaxLength: '25'
+    MinLength: '5'
+    Type: String
+  DomainDNSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+\..+'
+    Default: example.com
+    Description: Fully qualified domain name (FQDN) of the forest root domain e.g.example.com
+    MaxLength: '255'
+    MinLength: '2'
+    Type: String
+  DomainNetBIOSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: example
+    Description: NetBIOS name of the domain (up to 15 characters) for users of earlier versions of Windows e.g. EXAMPLE
+    MaxLength: '15'
+    MinLength: '1'
+    Type: String
+  NumberOfRDGWHosts:
+    AllowedValues:
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+    Default: '1'
+    Description: Enter the number of Remote Desktop Gateway hosts to create
+    Type: String
+  RDGWInstanceType:
+    Description: Amazon EC2 instance type for the Remote Desktop Gateway instances
+    Type: String
+    Default: t2.large
+    AllowedValues:
+      - t2.large
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+  RDGWCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/x
+    Description: Allowed CIDR Block for external access to the Remote Desktop Gateways
+    Type: String
+## Conditions ##
+Conditions:
+  # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
+  IsIAMAPIKey: !Equals [ !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]], "iamapikey"]
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/aws-vpc.template'
+      Parameters:
+        AvailabilityZones: !Join [ ',', !Ref 'AvailabilityZones' ]
+        KeyPairName: !Ref 'KeyPairName'
+        NumberOfAZs: '3'
+        PrivateSubnet1ACIDR: !Ref 'PrivateSubnet1CIDR'
+        PrivateSubnet2ACIDR: !Ref 'PrivateSubnet2CIDR'
+        PrivateSubnet3ACIDR: !Ref 'PrivateSubnet3CIDR'
+        PrivateSubnetATag2: !Sub "kubernetes.io/cluster/${AWS::StackName}-${AWS::Region}=owned"
+        PrivateSubnetATag3: "kubernetes.io/role/internal-elb="
+        PublicSubnet1CIDR: !Ref 'PublicSubnet1CIDR'
+        PublicSubnet2CIDR: !Ref 'PublicSubnet2CIDR'
+        PublicSubnet3CIDR: !Ref 'PublicSubnet3CIDR'
+        PublicSubnetTag2: !Sub "kubernetes.io/cluster/${AWS::StackName}-${AWS::Region}=owned"
+        PublicSubnetTag3: "kubernetes.io/role/elb="
+        VPCCIDR: !Ref 'VPCCIDR'
+  EKSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/amazon-eks.template.yaml'
+      Parameters:
+        PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
+        PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
+        PublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
+        EfsStorageClass: Enabled
+        KeyPairName: !Ref KeyPairName
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-amazon-eks/"
+        PrivateSubnet1ID: !GetAtt VPCStack.Outputs.PrivateSubnet1AID
+        PrivateSubnet2ID: !GetAtt VPCStack.Outputs.PrivateSubnet2AID
+        PrivateSubnet3ID: !GetAtt VPCStack.Outputs.PrivateSubnet3AID
+        NumberOfNodes: !Ref NumberOfNodes
+        NodeGroupName: !Ref NodeGroupName
+        NodeVolumeSize: !Ref NodeVolumeSize
+        LambdaZipsBucketName: !Ref LambdaZipsBucketName
+        NodeInstanceType: !Ref NodeInstanceType
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        AdditionalEKSAdminArns: !Join [ ",", !Ref AdditionalEKSAdminArns ]
+        VPCID: !GetAtt VPCStack.Outputs.VPCID
+        KubernetesVersion: !Ref KubernetesVersion
+        VPCCIDR: !Ref 'VPCCIDR'
+  FNCMECRStack:
+    DependsOn: EKSStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-create-ecr.yaml'
+      Parameters:
+        DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
+        IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
+  FNCMDockerRegistryStack:
+    DependsOn: FNCMECRStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-docker-registry.yaml'
+      Parameters:
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
+        CPERepoARN: !GetAtt 'FNCMECRStack.Outputs.CPEArn'
+        ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
+        ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
+        awsAccessKeyID: !Ref 'awsAccessKeyID'
+        awsAccessKeySecret: !Ref 'awsAccessKeySecret'
+        FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
+# Create the Oracle Master Database
+  RDSStack:
+    DependsOn: EKSStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-oracle.yaml'
+      Parameters:
+        DBInstanceClass: !Ref 'DBInstanceClass'
+        DBInstanceIdentifier: !Ref 'DBInstanceIdentifier'
+        DBName: !Ref 'DBName'
+        ORAVersion: !Ref 'ORAVersion'
+        DBUser: !Ref 'DBUser'
+        DBPassword: !Ref 'DBPassword'
+        VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
+        PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
+        PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
+        BastionSecurityGroupID: !GetAtt 'EKSStack.Outputs.BastionSecurityGroup'
+        NodeSecurityGroupID: !GetAtt 'EKSStack.Outputs.NodeGroupSecurityGroup'
+        ControlPlaneSecurityGroupID: !GetAtt 'EKSStack.Outputs.ControlPlaneSecurityGroup'
+# Create the Active Directory Domain Controllers
+  ADStack:
+    DependsOn: VPCStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-microsoft-ad-1.template'
+      Parameters:
+        ADServer1InstanceType: !Ref 'ADServer1InstanceType'
+        ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
+        ADServer1PrivateIP: !Ref 'ADServer1PrivateIP'
+        ADServer2InstanceType: !Ref 'ADServer2InstanceType'
+        ADServer2NetBIOSName: !Ref 'ADServer2NetBIOSName'
+        ADServer2PrivateIP: !Ref 'ADServer2PrivateIP'
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        DomainAdminUser: !Ref 'DomainAdminUser'
+        DomainDNSName: !Ref 'DomainDNSName'
+        DomainNetBIOSName: !Ref 'DomainNetBIOSName'
+        KeyPairName: !Ref 'KeyPairName'
+        PrivateSubnet1ID: !GetAtt 'VPCStack.Outputs.PrivateSubnet1AID'
+        PrivateSubnet2ID: !GetAtt 'VPCStack.Outputs.PrivateSubnet2AID'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        VPCCIDR: !GetAtt 'VPCStack.Outputs.VPCCIDR'
+        VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
+  RDGWStack:
+    DependsOn: ADStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/templates/rdgw-domain.template'
+      Parameters:
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        DomainAdminUser: !Ref 'DomainAdminUser'
+        DomainDNSName: !Ref 'DomainDNSName'
+        DomainMemberSGID: !GetAtt 'ADStack.Outputs.DomainMemberSGID'
+        DomainNetBIOSName: !Ref 'DomainNetBIOSName'
+        KeyPairName: !Ref 'KeyPairName'
+        NumberOfRDGWHosts: !Ref 'NumberOfRDGWHosts'
+        PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
+        PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        RDGWInstanceType: !Ref 'RDGWInstanceType'
+        RDGWCIDR: !Ref 'RDGWCIDR'
+        VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
+  # Add Users and Groups to Active Directory LDAP
+  PopulateActiveDirectoryDS:
+    DependsOn: ADStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-microsoft-ad-populate.yaml'
+      Parameters:
+        ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        DomainAdminUser: !Ref 'DomainAdminUser'
+        DomainDNSName: !Ref 'DomainDNSName'
+        DomainNetBIOSName: !Ref 'DomainNetBIOSName'
+        DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+  # Create the Oracle tablespaces and users for FNCM
+  RDSObjectCreation:
+    DependsOn: RDSStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-oracle-objects.yaml'
+      Parameters:
+        DBName: !Ref 'DBName'
+        DBUser: !Ref 'DBUser'
+        DBPassword: !Ref 'DBPassword'
+        EndpointAddress: !GetAtt 'RDSStack.Outputs.MasterEndpointAddress'
+        EndpointPort: !GetAtt 'RDSStack.Outputs.MasterEndpointPort'
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        ORAFilesLocation: !Ref 'ORAFilesLocation'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+  # Create the CPE and ICN container XML files
+  ContainerConfigFiles:
+    DependsOn: RDSObjectCreation
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-container-configuration-files.yaml'
+      Parameters:
+        DBName: !Ref 'DBName'
+        DBPassword: !Ref 'DBPassword'
+        EndpointAddress: !GetAtt 'RDSStack.Outputs.MasterEndpointAddress'
+        ADServer1PrivateIP: !Ref 'ADServer1PrivateIP'
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        BaseDN1: !Select [ 0, !Split [ ".", !Ref 'DomainDNSName' ] ]
+        BaseDN2: !Select [ 1, !Split [ ".", !Ref 'DomainDNSName' ] ]
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        ORAFilesLocation: !Ref 'ORAFilesLocation'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+  # Create PVs, PVCs, deploy CPE, CSS, ICN, CRS, and CMIS
+  # Depends on the configration XML files to be available in /home/ec2-user in order to copy the files into the configuration PVs
+  FNCMDeploymentStack:
+    DependsOn: ContainerConfigFiles
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager.child.template.yaml'
+      Parameters:
+        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
+        KubeConfigKmsContext: "EKSQuickStart"
+        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        CPERepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CPERepoURI
+        ICNRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.ICNRepoURI
+        CMISRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CMISRepoURI
+        CSSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CSSRepoURI
+        CRSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CRSRepoURI
+        EKSClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        sslCertArn: !Ref sslCertArn
+  # Create ALBs for CPE, ICN, etc
+  FNCMLoadBalancerStack:
+    DependsOn: FNCMDeploymentStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-create-albs.yaml'
+      Parameters:
+        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
+        KubeConfigKmsContext: "EKSQuickStart"
+        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
+        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        VPCID: !GetAtt VPCStack.Outputs.VPCID
+        VPCPublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
+        VPCPublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
+        VPCPublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
+# Create the CPE GCD and Object Store
+  CPEInitialization:
+    DependsOn: FNCMDeploymentStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-initialization.yaml'
+      Parameters:
+        CPENodeName: 'cpe-ingress'
+        CPENodePort: '80'
+        ADServer1PrivateIP: !Ref 'ADServer1PrivateIP'
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        BaseDN1: !Select [ 0, !Split [ ".", !Ref 'DomainDNSName' ] ]
+        BaseDN2: !Select [ 1, !Split [ ".", !Ref 'DomainDNSName' ] ]
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+# Create the ICN Desktop and Repository
+  ICNInitialization:
+    DependsOn: CPEInitialization
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-navigator-initialization.yaml'
+      Parameters:
+        CPENodeName: 'cpe-ingress'
+        CPENodePort: '80'
+        ICNNodeName: 'icn-ingress'
+        ICNNodePort: '80'
+        DomainAdminPassword: !Ref 'DomainAdminPassword'
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+Outputs:
+  KubeConfigPath:
+    Value: !GetAtt EKSStack.Outputs.KubeConfigPath
+  BastionIP:
+    Value: !GetAtt EKSStack.Outputs.BastionIP
+  MasterJDBCConnectionString:
+    Description: JDBC connection string for the master database
+    Value: !GetAtt 'RDSStack.Outputs.MasterJDBCConnectionString'

@@ -1,0 +1,23 @@
+<server>
+	<dataSource id="OS1DS" jndiName="OS1DS"  isolationLevel="TRANSACTION_READ_COMMITTED"  type="javax.sql.DataSource">
+		<jdbcDriver libraryRef="OracleLib"/>
+		<properties.oracle URL="jdbc:oracle:thin:@rds_endpoint:1521:rds_db"
+    		user="os1user"
+        password="rds_password"
+			resultSetHoldability="HOLD_CURSORS_OVER_COMMIT"
+		/>
+		<connectionManager  enableSharingForDirectLookups="false"/>
+
+	</dataSource>
+
+	<dataSource id="OS1DSXA" jndiName="OS1DSXA"  isolationLevel="TRANSACTION_READ_COMMITTED"  type="javax.sql.XADataSource" supplementalJDBCTrace="true">
+		<properties.oracle URL="jdbc:oracle:thin:@rds_endpoint:1521:rds_db"
+    		user="os1user"
+        password="rds_password"
+		/>
+		<connectionManager  enableSharingForDirectLookups="true"/>
+
+		<jdbcDriver libraryRef="OracleLib"/>
+
+	</dataSource>
+</server>
