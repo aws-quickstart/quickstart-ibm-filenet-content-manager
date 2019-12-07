@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Oracle Database Objects Template'
+Description: 'Create Content Navigator Desktop and Repository'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -13,26 +13,32 @@ Metadata:
           - QSS3BucketName
           - QSS3KeyPrefix
       - Label:
-          default: Oracle RDS Configuration
+          default: CPE Container Configuration
         Parameters:
-          - DBName
-          - DBUser
-          - DBPassword
-          - EndpointAddress
-          - EndpointPort
+          - CPENodeName
+          - CPENodePort
+      - Label:
+          default: ICN Container Configuration
+        Parameters:
+          - ICNNodeName
+          - ICNNodePort
+      - Label:
+          default: Microsoft Active Directory Configuration
+        Parameters:
+          - DomainAdminPassword
     ParameterLabels:
       BastionASGName:
         default: Auto Scaling Group Name of the Bastion Host
-      DBName:
-        default: The database name
-      DBUser:
-        default: The database admin account username
-      DBPassword:
-        default: The database admin account password
-      EndpointAddress:
-        default: Endpoint address of the Master database
-      EndpointPort:
-        default: Endpoint port number of the Master database
+      CPENodeName:
+        default: The CPE load balancer name
+      CPENodePort:
+        default: The CPE load balancer port
+      ICNNodeName:
+        default: The ICN load balancer name
+      ICNNodePort:
+        default: The ICN load balancer port
+      DomainAdminPassword:
+        default: Password for the domain admin user
 Parameters:
   QSS3BucketName:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
@@ -53,56 +59,41 @@ Parameters:
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
     Type: String
-  ORAFilesLocation:
-    Description: Provide the S3 location of the downloaded Oracle client files.
-        E.g., https://aws-quickstart-<mylocation>.s3.amazonaws.com
-        Refer to the deployment guide for more information
+  CPENodeName:
+    Description: The CPE load balancer name
     Type: String
-  DBName:
-    Description: The database name
+  CPENodePort:
+    Description: The CPE load balancer port
     Type: String
-    MinLength: '1'
-    MaxLength: '8'
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
-  DBUser:
-    NoEcho: 'false'
-    Description: The database admin account username
+  ICNNodeName:
+    Description: The ICN load balancer name
     Type: String
-    MinLength: '1'
-    MaxLength: '16'
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
-  DBPassword:
-    NoEcho: 'true'
-    Description: The database admin account password
+  ICNNodePort:
+    Description: The ICN load balancer port
     Type: String
+  DomainAdminPassword:
+    AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
+    Description: Password for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols
+    MaxLength: '32'
     MinLength: '8'
-    MaxLength: '41'
-    AllowedPattern: '[a-zA-Z0-9]*'
-    ConstraintDescription: must contain only alphanumeric characters.
+    NoEcho: 'true'
+    Type: String
   BastionASGName:
     Description: Auto Scaling Group Name of the Bastion Host
-    Type: String
-  EndpointAddress:
-    Description: Endpoint address of the Master database
-    Type: String
-  EndpointPort:
-    Description: Endpoint port number of the Master database
     Type: String
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-RDS_Objects'
+      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-Initialization'
       RetentionInDays: 30
-  RDSSchemasConfigDocument:
+  ICNContainerInitDocument:
     Type: 'AWS::SSM::Document'
     Properties:
       DocumentType: Command
       Content:
         schemaVersion: '2.2'
-        description: Create Oracle Database Tablespaces and Users
+        description: Create GCD and Object Store
         parameters:
           QSS3BucketName:
             default: !Ref QSS3BucketName
@@ -112,70 +103,48 @@ Resources:
             default: !Ref QSS3KeyPrefix
             description: The AWS S3 Key Prefix
             type: String
-          ORAFilesLocation:
-            default: !Ref ORAFilesLocation
-            description: Location of Oracle client files
+          CPENodeName:
+            default: !Ref CPENodeName
+            description: The CPE load balancer name
             type: String
-          DBName:
-            default: !Ref DBName
-            description: The database name
+          CPENodePort:
+            default: !Ref CPENodePort
+            description: The CPE load balancer name
             type: String
-          DBUser:
-            default: !Ref DBUser
-            description: The database admin account username
+          ICNNodeName:
+            default: !Ref ICNNodeName
+            description: The ICN load balancer name
             type: String
-          DBPassword:
-            default: !Ref DBPassword
-            description: The database admin account password
+          ICNNodePort:
+            default: !Ref ICNNodePort
+            description: The ICN load balancer name
             type: String
-          EndpointAddress:
-            description: Endpoint address of the Master database
+          DomainAdminPassword:
+            default: !Ref DomainAdminPassword
+            description: Password for the AD domain admin user
             type: String
-            default: !Ref EndpointAddress
-          EndpointPort:
-            description: Endpoint port number of the Master database
-            type: String
-            default: !Ref EndpointPort
         mainSteps:
           - action: 'aws:runShellScript'
-            name: downloadBasicclient
+            name: downloadICNUtilsFile
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/instantclient-basiclite-linux.x64-19.3.0.0.0dbru.zip'
-                    - '{{ORAFilesLocation}}/instantclient-basiclite-linux.x64-19.3.0.0.0dbru.zip'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_ICNutils.zip'
+                    - '/home/ec2-user/ICNutils.zip'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
-            name: downloadSqlclient
+            name: downloadICNScript
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/instantclient-sqlplus-linux.x64-19.3.0.0.0dbru.zip'
-                    - '{{ORAFilesLocation}}/instantclient-sqlplus-linux.x64-19.3.0.0.0dbru.zip'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: downloadScriptFile
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_oracle_commands.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_oracle_commands.sh'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: downloadSqlscript
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_oracle_database_objects.sql'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_oracle_database_objects.sql'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_createDesktop.sh'
+                    - '/home/ec2-user/FNCM_createDesktop.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions
@@ -187,20 +156,20 @@ Resources:
                     - '-R ec2-user:ec2-user /home/ec2-user'
                     - ';'
                     - '"chmod"'
-                    - '755 /home/ec2-user/FNCM_oracle_commands.sh'
+                    - '755 /home/ec2-user/FNCM_*.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
-            name: createObjects
+            name: runICNScript
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"/home/ec2-user/FNCM_oracle_commands.sh"'
-                    - '{{DBUser}}'
-                    - '{{DBPassword}}'
-                    - '{{EndpointAddress}}'
-                    - '{{EndpointPort}}'
-                    - '{{DBName}}'
+                  - - '"/home/ec2-user/FNCM_createDesktop.sh"'
+                    - '{{ICNNodeName}}'
+                    - '{{ICNNodePort}}'
+                    - '{{DomainAdminPassword}}'
+                    - '{{CPENodeName}}'
+                    - '{{CPENodePort}}'
               workingDirectory: '/home/ec2-user'
   SSMSendCommandPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
@@ -229,10 +198,10 @@ Resources:
         - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
         - !Ref SSMSendCommandPolicy
-  ExecuteRDSSchemasDocumentLambda:
+  ExecuteContainerInitDocumentLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - RDSSchemasConfigDocument
+      - ICNContainerInitDocument
       - SSMSendCommandLambdaRole
     Properties:
       Handler: index.lambda_handler
@@ -261,12 +230,13 @@ Resources:
             - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
             - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
             - '            responseData = {}'
+            - '            print(''Bastion Node Instance: '' + instanceId)'
             - ''
             - '            response=ssm.send_command('
             - '                InstanceIds = [instanceId],'
             - '                DocumentName=ssmDocument,'
             - '                TimeoutSeconds=3600,'
-            - '                Comment=''Create Oracle Database Tablespaces and Users'','
+            - '                Comment=''Create Navigator Desktop and Repository'','
             - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True, ''CloudWatchLogGroupName'': ''QuickStartLogs''},'
             - '                MaxConcurrency=''50'','
             - '                MaxErrors=''5'','
@@ -275,25 +245,25 @@ Resources:
             - '            cmdId = response[''Command''][''CommandId'']'
             - '            responseData[''CommandId''] = cmdId'
             - '            print(''Started object creation in CommandId: '' + cmdId)'
-            - '            print(''Bastion Host Instance: '' + instanceId)'
+            - '            print(''Bastion Node Instance: '' + instanceId)'
             - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
             - '    except Exception as e:'
             - '        logging.error(''Exception: %s'' % e, exc_info=True)'
             - '        status = cfnresponse.FAILED'
             - '        cfnresponse.send(event, context, status, {}, None)'
-      Description: Executes Oracle Schema creation SQL script on Bastion host
+      Description: Executes ICN initialization scripts on the Bastion host
       MemorySize: 320
       Timeout: 180
       Role: !GetAtt
         - SSMSendCommandLambdaRole
         - Arn
-  ExecuteRDSObjectsDocument:
-    Type: 'Custom::ExecuteRDSObjectsDocument'
+  ExecuteICNContainerInitDocument:
+    Type: 'Custom::ExecuteICNContainerInitDocument'
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt
-        - ExecuteRDSSchemasDocumentLambda
+        - ExecuteContainerInitDocumentLambda
         - Arn
-      SSMDocument: !Ref RDSSchemasConfigDocument
+      SSMDocument: !Ref ICNContainerInitDocument
       BastionASGName: !Ref BastionASGName
       QuickStartLogs: !Ref QuickStartLogs

@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Oracle Objects creation
 
 # extract command-line options into variables.

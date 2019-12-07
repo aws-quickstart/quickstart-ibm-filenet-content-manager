@@ -24,7 +24,7 @@ CPE_PodName=$(echo $PodName | awk '{print $1}')
 CPE_LogLocation="/data/ecm/cpe/logstore/$CPE_PodName"
 
 # Set timeout values in minutes
-TIME_OUT=15
+TIME_OUT=30
 
 # Upgrade to Java 8
 yum install java-1.8.0 -y
@@ -33,7 +33,7 @@ yum install java-1.8.0 -y
 
 # Extract CPE libraries and jar files
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	if [[ -f /home/ec2-user/CPELibs.zip ]]; then
 		unzip -o CPELibs.zip
@@ -45,7 +45,7 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE Library archive was not downloaded successfully. Exiting..."
         exit
 fi
@@ -55,7 +55,7 @@ LIBCLASSPATH="/home/ec2-user/cpelib/CPEUtils.jar:/home/ec2-user/cpelib/Jace.jar:
 
 # Check whether CPE is online - then create the GCD
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
     PodsOnline=$(runuser -l ec2-user -c "kubectl get deployment fncm-cpe -o jsonpath='{.status.readyReplicas}'")
     if [[ $PodsOnline -eq "3" ]]; then
@@ -81,7 +81,7 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE has not started successfully. Exiting..."
         exit
 fi

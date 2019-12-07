@@ -240,7 +240,8 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess
-        - arn:aws:iam::558510413658:policy/ingressController-iam-policy
+        # Remove as per feedback from Vinod - this is for ALB Ingress Controller creation
+        #- arn:aws:iam::558510413658:policy/ingressController-iam-policy
       Policies:
         - PolicyName: QSBucketAccess
           PolicyDocument:

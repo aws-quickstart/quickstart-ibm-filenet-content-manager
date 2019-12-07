@@ -31,8 +31,10 @@ Parameters:
     AllowedPattern: ^[0-9a-zA-Z-/.]*$
     Default: aws-quickstart-fncm/
     Type: String
-  sslCertArn:
+  SSLCertARN:
     Type: String
+  NodeInstanceRoleName: 
+    Type: String  
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -705,9 +707,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/dbamc_create_pvs.sh'
-                    - 'https://aws-quickstart-fncm.s3.amazonaws.com/aws-quickstart-fncm/scripts/dbamc_create_pvs.sh'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/dbamc_create_pvs.sh'
+                    - '/home/ec2-user/dbamc_create_pvs.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setDBAMCFilePermissions
@@ -726,96 +729,17 @@ Resources:
                   - ' '
                   - - '"/home/ec2-user/dbamc_create_pvs.sh"'
               workingDirectory: '/home/ec2-user'              
-          # - action: 'aws:runShellScript'
-          #   name: downloadLDAPXML
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/ldap.xml'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ldap.xml'
-          #     workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadcssSelfSignedServerStore
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/cssSelfsignedServerStore'
-                    - 'https://aws-quickstart-fncm.s3.amazonaws.com/aws-quickstart-fncm/scripts/cssSelfsignedServerStore'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/cssSelfsignedServerStore'
+                    - '/home/ec2-user/cssSelfsignedServerStore'                    
               workingDirectory: '/home/ec2-user'              
-          # - action: 'aws:runShellScript'
-          #   name: downloadGCDXML
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/GCD.xml'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/GCD.xml'
-          #     workingDirectory: '/home/ec2-user'
-          # - action: 'aws:runShellScript'
-          #   name: downloadOS1XML
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/OS1.xml'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/OS1.xml'
-          #     workingDirectory: '/home/ec2-user'
-          # - action: 'aws:runShellScript'
-          #   name: downloadICNDSXML
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/ICNDS.xml'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ICNDS.xml'
-          #     workingDirectory: '/home/ec2-user'
-          # - action: 'aws:runShellScript'
-          #   name: downloadDB2JDBCDriverXML
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/DB2JCCDriver.xml'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/DB2JCCDriver.xml'
-          #     workingDirectory: '/home/ec2-user'
-          # - action: 'aws:runShellScript'
-          #   name: downloadDB2JDBCDriver
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/db2jcc4.jar'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/db2jcc4.jar'
-          #     workingDirectory: '/home/ec2-user'         
-          # - action: 'aws:runShellScript'
-          #   name: downloadDB2JDBCDriverLicense
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/db2jcc_license_cu.jar'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/db2jcc_license_cu.jar'
-          #     workingDirectory: '/home/ec2-user'
-          # - action: 'aws:runShellScript'
-          #   name: downloadOracleJDBC8Jar
-          #   inputs:
-          #     runCommand:
-          #       - !Join
-          #         - ' '
-          #         - - '"curl"'
-          #           - '-o /home/ec2-user/ojdbc8.jar'
-          #           - 'https://aws-quickstart-dbamc.s3.amazonaws.com/ojdbc8.jar'
-          #     workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: copyConfigurationXMLFiles
             inputs:
@@ -1462,7 +1386,185 @@ Resources:
                   - name: icnasperastore
                     persistentVolumeClaim: 
                       claimName: icn-asperastore-pvc
-
+  # Creating Ingress Controller Policy
+  CreateIngressControllerPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Policy for ALB Ingress Controller
+      Path: /
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: 'acm:DescribeCertificate'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'acm:ListCertificates'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'acm:GetCertificate'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:AuthorizeSecurityGroupIngress'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:CreateSecurityGroup'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:CreateTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DeleteTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DeleteSecurityGroup'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeInstances'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeInstanceStatus'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeSecurityGroups'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeSubnets'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeVpcs'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:ModifyInstanceAttribute'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:ModifyNetworkInterfaceAttribute'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:RevokeSecurityGroupIngress'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:AddTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:CreateListener'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:CreateLoadBalancer'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:CreateRule'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:CreateTargetGroup'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DeleteListener'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DeleteLoadBalancer'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DeleteRule'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DeleteTargetGroup'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DeregisterTargets'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeListeners'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeLoadBalancers'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeLoadBalancerAttributes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeRules'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeSSLPolicies'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeTargetGroups'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeTargetGroupAttributes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeTargetHealth'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ModifyListener'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ModifyLoadBalancerAttributes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ModifyRule'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ModifyTargetGroup'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ModifyTargetGroupAttributes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:RemoveTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:SetIpAddressType'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:SetSecurityGroups'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:SetSubnets'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:SetWebACL'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'iam:GetServerCertificate'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'iam:ListServerCertificates'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'waf-regional:GetWebACLForResource'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'waf-regional:GetWebACL'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'waf-regional:AssociateWebACL'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'waf-regional:DisassociateWebACL'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'tag:GetResources'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'tag:TagResources'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'waf:GetWebACL'
+            Resource: '*'
+      Roles: [!Ref NodeInstanceRoleName]
+  # Create CPE Load Balancer
   CreateCPELoadBalancer:
     Type: "Custom::KubeManifest"
     DependsOn: fncmCPEDeploymentStack
@@ -1485,7 +1587,7 @@ Resources:
             kubernetes.io/ingress.class: alb
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-            alb.ingress.kubernetes.io/certificate-arn: ${sslCertArn}
+            alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
           labels:
             app: cpe-ingress
         spec:
@@ -1518,7 +1620,7 @@ Resources:
             kubernetes.io/ingress.class: alb
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-            alb.ingress.kubernetes.io/certificate-arn: ${sslCertArn}
+            alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
           labels:
             app: icn-ingress
         spec:

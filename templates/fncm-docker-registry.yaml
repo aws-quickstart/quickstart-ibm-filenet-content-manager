@@ -20,27 +20,19 @@ Parameters:
     NoEcho: 'true'
     Description: The AWS Access Key to access your Elastic Container Registry (ECR).  
       The docker container repositories is where the FileNet Content Manager 
-      docker containers will reside.  The AWS Access Key looks something like AKIAYECXQS5NKIV4G5H3
     Type: String
     MinLength: '20'
   awsAccessKeySecret:
     NoEcho: 'true'
     Description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
-      It looks something like i+YpKXYgSluUMn9vgt4mA12RGURtZ2nmHZ99RU8
     Type: String
     MinLength: '20'
-  # IAMAPIKeyword:
-  #   Type: String
-  #   Description: Entitlement Key
   FinalLogin:
     Type: String
     Description: Final Login string
-
-## Conditions ##
-# Conditions:
-#   # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
-#   IsIAMAPIKey: !Equals [ !Ref IAMAPIKeyword, "iamapikey"]    
-
+  LowerCaseStackName:
+    Type: String
+    Description: The name of the stack in lower case
 Resources:
   LoginPullPushContainers:
     Type: 'AWS::SSM::Document'
@@ -70,12 +62,10 @@ Resources:
             default: !Ref awsAccessKeyID
             description: The AWS Access Key to access your Elastic Container Registry (ECR).  
               The docker container repositories is where the FileNet Content Manager 
-              docker containers will reside.  The AWS Access Key looks something like AKIAYECXQS5NKIV4G5H3
             type: String
           awsAccessKeySecretString:
             default: !Ref awsAccessKeySecret
             description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
-              It looks something like i+YpKXYgSluUMn9vgt4mA12RGURtZ2nmHZ99RU8
             type: String
           CPERepoURI:
             default: !Join
@@ -83,7 +73,9 @@ Resources:
               - - !Ref ECROrg
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
-                - '.amazonaws.com/cpe:ga-553-p8cpe-if001'
+                - '.amazonaws.com/'
+                - !Ref LowerCaseStackName
+                - '-cpe:ga-553-p8cpe-if001'
             type: String
           ICNRepoURI:
             default: !Join
@@ -91,7 +83,9 @@ Resources:
               - - !Ref ECROrg
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
-                - '.amazonaws.com/navigator:ga-306-icn-if002'
+                - '.amazonaws.com/'
+                - !Ref LowerCaseStackName                
+                - '-navigator:ga-306-icn-if002'
             type: String                
           CMISRepoURI:
             default: !Join
@@ -99,7 +93,9 @@ Resources:
               - - !Ref ECROrg
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
-                - '.amazonaws.com/cmis:ga-304-cmis-if008'
+                - '.amazonaws.com/'
+                - !Ref LowerCaseStackName                
+                - '-cmis:ga-304-cmis-if008'
             type: String                
           CSSRepoURI:
             default: !Join
@@ -107,7 +103,9 @@ Resources:
               - - !Ref ECROrg
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
-                - '.amazonaws.com/css:ga-553-p8css-if001'
+                - '.amazonaws.com/'
+                - !Ref LowerCaseStackName                
+                - '-css:ga-553-p8css-if001'
             type: String                
           CRSRepoURI:
             default: !Join
@@ -115,7 +113,9 @@ Resources:
               - - !Ref ECROrg
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
-                - '.amazonaws.com/crs:ga-553-p8cgql-if001'
+                - '.amazonaws.com/'
+                - !Ref LowerCaseStackName                
+                - '-crs:ga-553-p8cgql-if001'
             type: String                
         mainSteps:
           - action: 'aws:runShellScript'
@@ -126,9 +126,6 @@ Resources:
                   - ' '
                   - - '"/usr/bin/docker"'
                     - '{{FinalLogin}}'
-                    # - '-u iamapikey'
-                    # - '-p {{DockerRegistryEntitlementKey}}'
-                    # - 'cp.icr.io'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCSSContainer
@@ -345,6 +342,7 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess'
         - !Ref dbamcSSMSendCommandPolicy
   dbamcExecuteLoginPullPushContainersDocumentLambda:
     Type: 'AWS::Lambda::Function'
@@ -420,32 +418,42 @@ Outputs:
       - - !Ref ECROrg
         - '.dkr.ecr.'
         - !Ref ECRRegion
-        - '.amazonaws.com/cpe:ga-553-p8cpe-if001'
+        - '.amazonaws.com/'
+        - !Ref LowerCaseStackName
+        - '-cpe:ga-553-p8cpe-if001'
   ICNRepoURI:
     Value: !Join
       - ''
       - - !Ref ECROrg
         - '.dkr.ecr.'
         - !Ref ECRRegion
-        - '.amazonaws.com/navigator:ga-306-icn-if002'
+        - '.amazonaws.com/'
+        - !Ref LowerCaseStackName        
+        - '-navigator:ga-306-icn-if002'
   CMISRepoURI:
     Value: !Join
       - ''
       - - !Ref ECROrg
         - '.dkr.ecr.'
         - !Ref ECRRegion
-        - '.amazonaws.com/cmis:ga-304-cmis-if008'
+        - '.amazonaws.com/'
+        - !Ref LowerCaseStackName        
+        - '-cmis:ga-304-cmis-if008'
   CSSRepoURI:
     Value: !Join
       - ''
       - - !Ref ECROrg
         - '.dkr.ecr.'
         - !Ref ECRRegion
-        - '.amazonaws.com/css:ga-553-p8css-if001'
+        - '.amazonaws.com/'
+        - !Ref LowerCaseStackName        
+        - '-css:ga-553-p8css-if001'
   CRSRepoURI:
     Value: !Join
       - ''
       - - !Ref ECROrg
         - '.dkr.ecr.'
         - !Ref ECRRegion
-        - '.amazonaws.com/crs:ga-553-p8cgql-if001'
+        - '.amazonaws.com/'
+        - !Ref LowerCaseStackName        
+        - '-crs:ga-553-p8cgql-if001'
