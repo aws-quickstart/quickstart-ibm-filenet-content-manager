@@ -142,9 +142,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/CPELibs.zip'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_CPELibs.zip'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_CPELibs.zip'
+                    - '/home/ec2-user/CPELibs.zip'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadGcdScript
@@ -152,9 +153,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_createGCD.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_createGCD.sh'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_createGCD.sh'
+                    - '/home/ec2-user/FNCM_createGCD.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadObjectstoreScript
@@ -162,9 +164,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_createOS1.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_createOS1.sh'
+                  - - '"aws"'
+                    - 's3 cp'                  
+                    - 's3://ibm-fncm-assets/scripts/FNCM_createOS1.sh'
+                    - '/home/ec2-user/FNCM_createOS1.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions

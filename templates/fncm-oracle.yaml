@@ -22,6 +22,7 @@ Metadata:
           - DBUser
           - DBPassword
           - DBPort
+          - DBMultiZone
     ParameterLabels:
       ORAVersion:
         default: Amazon RDS Oracle version
@@ -37,6 +38,8 @@ Metadata:
         default: The database admin account password
       DBPort:
         default: Oracle Database listener port number.
+      DBMultiZone:
+        default: High Availability (Multi-AZ) for Oracle RDS
       VPCID:
         default: VpcId of your Virtual Private Cloud (VPC)
       PublicSubnet1ID:
@@ -105,6 +108,14 @@ Parameters:
     Default: '1521'
     Description: Oracle Database listener port number.
     Type: Number
+  DBMultiZone:
+    Description: High Availability (Multi-AZ) for Oracle RDS.
+        More informtion is available here - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: true
   VPCID:
     Type: AWS::EC2::VPC::Id
     Description: VpcId of your Virtual Private Cloud (VPC)
@@ -221,7 +232,7 @@ Resources:
       LicenseModel: license-included
       MasterUsername: !Ref 'DBUser'
       MasterUserPassword: !Ref 'DBPassword'
-      MultiAZ: true
+      MultiAZ: !Ref 'DBMultiZone'
       VPCSecurityGroups: !Split [ ",", !Join [ ",", [!Ref OracleServerAccessSecurityGroup, !Ref OracleServerSecurityGroup, !Ref OracleServersSecurityGroup, !Ref NodeSecurityGroupID, !Ref ControlPlaneSecurityGroupID] ] ]
   P8DBParamGroup:
     Type: AWS::RDS::DBParameterGroup

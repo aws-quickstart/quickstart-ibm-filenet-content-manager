@@ -23,7 +23,7 @@ Metadata:
       - KeyPairName
       - awsAccessKeyID
       - awsAccessKeySecret
-      - sslCertArn
+      - SSLCertARN
     - Label:
         default: Amazon EKS configuration
       Parameters:
@@ -54,6 +54,7 @@ Metadata:
       - DBName
       - DBUser
       - DBPassword
+      - DBMultiZone
 # Active Directory Network Parameters
     - Label:
         default: Active Directory EC2 configuration
@@ -83,7 +84,7 @@ Metadata:
         default: AWS Access Key ID
       awsAccessKeySecret:
         default: AWS Secret Access Key
-      sslCertArn:
+      SSLCertARN:
         default: SSL/TLS certificate ARN
       PrivateSubnet1CIDR:
         default: Private subnet 1 CIDR
@@ -136,6 +137,8 @@ Metadata:
         default: Oracle Database Admin User Name
       DBPassword:
         default: Oracle Database Admin User Password
+      DBMultiZone:
+        default: High Availability (Multi-AZ) for Oracle RDS
 # Microsoft Active Directory Parameters
       ADServer1InstanceType:
         Default: Domain Controller 1 Instance Type
@@ -183,7 +186,7 @@ Parameters:
     Description: The AWS Secret Access Key that corresponds to the Access Key ID above.
     Type: String
     MinLength: '20'
-  sslCertArn:
+  SSLCertARN:
     Type: String
     MinLength: '20'
     Description: SSL/TLS certificate managed by IAM or ACM (e.g., arn:aws:acm:us-east-1:558510413658:certificate/xxxxx-xxxx-xxxx-xxxxx).  Required for secured HTTPS communication.
@@ -364,8 +367,8 @@ Parameters:
   KubernetesVersion:
     Description: The Kubernetes version of the Amazon EKS cluster.
     Type: String
-    AllowedValues: [ "1.11", "1.10" ]
-    Default: "1.11"
+    AllowedValues: [ "1.14" , "1.13" ]
+    Default: "1.14"
   FNCMVersion:
     Type: String
     Default: "FileNet Content Manager 5.5.3"
@@ -379,8 +382,8 @@ Parameters:
 # Oracle RDS Database Parameters
   ORAFilesLocation:
     Description: Provide the S3 location of the downloaded Oracle client files.
-        E.g., https://aws-quickstart-<mylocation>.s3.amazonaws.com
-        Refer to the deployment guide for more information
+        E.g., s3://ibm-fncm-assets/oracle_client_files
+        Refer to the deployment guide for more information on downloading the client files and obtaining the location
     Type: String
   ORAVersion:
     AllowedValues: [ "12.1", "12.2" ]
@@ -415,7 +418,6 @@ Parameters:
     ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
   DBUser:
     Default: P8Admin
-    NoEcho: 'false'
     Description: The database admin account username
     Type: String
     MinLength: '1'
@@ -430,6 +432,14 @@ Parameters:
     MaxLength: '41'
     AllowedPattern: '[a-zA-Z0-9]*'
     ConstraintDescription: must contain only alphanumeric characters.
+  DBMultiZone:
+    Description: High Availability (Multi-AZ) for Oracle RDS.
+        More information is available here - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: true
 # Active Directory Parameters
   ADServer1InstanceType:
     AllowedValues:
@@ -587,11 +597,16 @@ Resources:
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
         VPCCIDR: !Ref 'VPCCIDR'
-  FNCMECRStack:
+  FNCMStringFuctionstack:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-create-ecr.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-stringfunctions.yaml'
+  FNCMECRStack:
+    DependsOn: FNCMStringFuctionstack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-ecr.yaml'
       Parameters:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
@@ -599,13 +614,14 @@ Resources:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-docker-registry.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-docker-registry.yaml'
       Parameters:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         CPERepoARN: !GetAtt 'FNCMECRStack.Outputs.CPEArn'
         ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
+        LowerCaseStackName: !GetAtt 'FNCMECRStack.Outputs.LowerCaseStackName'
         awsAccessKeyID: !Ref 'awsAccessKeyID'
         awsAccessKeySecret: !Ref 'awsAccessKeySecret'
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
@@ -614,7 +630,7 @@ Resources:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-oracle.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-oracle.yaml'
       Parameters:
         DBInstanceClass: !Ref 'DBInstanceClass'
         DBInstanceIdentifier: !Ref 'DBInstanceIdentifier'
@@ -622,6 +638,7 @@ Resources:
         ORAVersion: !Ref 'ORAVersion'
         DBUser: !Ref 'DBUser'
         DBPassword: !Ref 'DBPassword'
+        DBMultiZone: !Ref 'DBMultiZone'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
         PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
         PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
@@ -633,7 +650,7 @@ Resources:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-microsoft-ad-1.template'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-microsoft-ad-1.template'
       Parameters:
         ADServer1InstanceType: !Ref 'ADServer1InstanceType'
         ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
@@ -677,7 +694,7 @@ Resources:
     DependsOn: ADStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-microsoft-ad-populate.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-microsoft-ad-populate.yaml'
       Parameters:
         ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
         DomainAdminPassword: !Ref 'DomainAdminPassword'
@@ -692,7 +709,7 @@ Resources:
     DependsOn: RDSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-oracle-objects.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-oracle-objects.yaml'
       Parameters:
         DBName: !Ref 'DBName'
         DBUser: !Ref 'DBUser'
@@ -705,10 +722,10 @@ Resources:
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
   # Create the CPE and ICN container XML files
   ContainerConfigFiles:
-    DependsOn: RDSObjectCreation
+    DependsOn: [PopulateActiveDirectoryDS, RDSObjectCreation]
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-container-configuration-files.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-container-configuration-files.yaml'
       Parameters:
         DBName: !Ref 'DBName'
         DBPassword: !Ref 'DBPassword'
@@ -727,7 +744,7 @@ Resources:
     DependsOn: ContainerConfigFiles
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager.child.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-deployment.template.yaml'
       Parameters:
         KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
         KubeConfigKmsContext: "EKSQuickStart"
@@ -741,13 +758,14 @@ Resources:
         EKSClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
-        sslCertArn: !Ref sslCertArn
+        SSLCertARN: !Ref SSLCertARN
+        NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}quickstart-ibm-filenet-content-manager-create-albs.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-albs.yaml'
       Parameters:
         KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
         KubeConfigKmsContext: "EKSQuickStart"
@@ -762,7 +780,7 @@ Resources:
     DependsOn: FNCMDeploymentStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-manager-initialization.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-initialization.yaml'
       Parameters:
         CPENodeName: 'cpe-ingress'
         CPENodePort: '80'
@@ -778,7 +796,7 @@ Resources:
     DependsOn: CPEInitialization
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}aws-quickstart-ibm-filenet-content-navigator-initialization.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-navigator-initialization.yaml'
       Parameters:
         CPENodeName: 'cpe-ingress'
         CPENodePort: '80'

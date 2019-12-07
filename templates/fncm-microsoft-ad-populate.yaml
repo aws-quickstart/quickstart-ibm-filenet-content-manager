@@ -1,44 +1,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Create Content Navigator Desktop and Repository'
+Description: This template creates the AD users and groups required for FileNet P8
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
           default: Amazon EC2 Configuration
         Parameters:
-          - BastionASGName
+          - ADServer1NetBIOSName
       - Label:
           default: AWS Quick Start configuration
         Parameters:
           - QSS3BucketName
           - QSS3KeyPrefix
       - Label:
-          default: CPE Container Configuration
-        Parameters:
-          - CPENodeName
-          - CPENodePort
-      - Label:
-          default: ICN Container Configuration
-        Parameters:
-          - ICNNodeName
-          - ICNNodePort
-      - Label:
           default: Microsoft Active Directory Configuration
         Parameters:
+          - DomainDNSName
+          - DomainNetBIOSName
+          - DomainAdminUser
           - DomainAdminPassword
     ParameterLabels:
-      BastionASGName:
-        default: Auto Scaling Group Name of the Bastion Host
-      CPENodeName:
-        default: The CPE load balancer name
-      CPENodePort:
-        default: The CPE load balancer port
-      ICNNodeName:
-        default: The ICN load balancer name
-      ICNNodePort:
-        default: The ICN load balancer port
+      ADServer1NetBIOSName:
+        default: Domain Controller 1 NetBIOS Name
       DomainAdminPassword:
-        default: Password for the domain admin user
+        default: Domain Admin Password
+      DomainAdminUser:
+        default: Domain Admin User Name
+      DomainDNSName:
+        default: Domain DNS Name
+      DomainNetBIOSName:
+        default: Domain NetBIOS Name
 Parameters:
   QSS3BucketName:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
@@ -59,41 +50,61 @@ Parameters:
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
     Type: String
-  CPENodeName:
-    Description: The CPE load balancer name
-    Type: String
-  CPENodePort:
-    Description: The CPE load balancer port
-    Type: String
-  ICNNodeName:
-    Description: The ICN load balancer name
-    Type: String
-  ICNNodePort:
-    Description: The ICN load balancer port
+  ADServer1NetBIOSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: DC1
+    Description: NetBIOS name of the first Active Directory server (up to 15 characters)
+    MaxLength: '15'
+    MinLength: '1'
     Type: String
   DomainAdminPassword:
     AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
-    Description: Password for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols
+    Description: Password for the domain admin user. Must be at least 8 characters
+      containing letters, numbers and symbols
     MaxLength: '32'
     MinLength: '8'
     NoEcho: 'true'
     Type: String
-  BastionASGName:
-    Description: Auto Scaling Group Name of the Bastion Host
+  DomainAdminUser:
+    AllowedPattern: '[a-zA-Z0-9]*'
+    Default: Admin
+    Description: User name for the account that will be added as Domain Administrator.
+      This is separate from the default "Administrator" account
+    MaxLength: '25'
+    MinLength: '5'
     Type: String
+  DomainDNSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+\..+'
+    Default: example.com
+    Description: Fully qualified domain name (FQDN) of the forest root domain e.g.
+      example.com
+    MaxLength: '255'
+    MinLength: '2'
+    Type: String
+  DomainNetBIOSName:
+    AllowedPattern: '[a-zA-Z0-9\-]+'
+    Default: example
+    Description: NetBIOS name of the domain (up to 15 characters) for users of earlier
+      versions of Windows e.g. EXAMPLE
+    MaxLength: '15'
+    MinLength: '1'
+    Type: String
+  DCInstanceId:
+    Description: Instance ID of the Domain Controller - DC1
+    Type: 'AWS::EC2::Instance::Id'
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-Initialization'
+      LogGroupName: !Sub '/aws/Quick_Start/${AWS::StackName}-AD_Populate'
       RetentionInDays: 30
-  ICNContainerInitDocument:
+  PopulateDSConfigDocument:
     Type: 'AWS::SSM::Document'
     Properties:
       DocumentType: Command
       Content:
         schemaVersion: '2.2'
-        description: Create GCD and Object Store
+        description: Populate AD with Users and Groups
         parameters:
           QSS3BucketName:
             default: !Ref QSS3BucketName
@@ -103,72 +114,44 @@ Resources:
             default: !Ref QSS3KeyPrefix
             description: The AWS S3 Key Prefix
             type: String
-          CPENodeName:
-            default: !Ref CPENodeName
-            description: The CPE load balancer name
-            type: String
-          CPENodePort:
-            default: !Ref CPENodePort
-            description: The CPE load balancer name
-            type: String
-          ICNNodeName:
-            default: !Ref ICNNodeName
-            description: The ICN load balancer name
-            type: String
-          ICNNodePort:
-            default: !Ref ICNNodePort
-            description: The ICN load balancer name
-            type: String
           DomainAdminPassword:
-            default: !Ref DomainAdminPassword
-            description: Password for the AD domain admin user
-            type: String
+              description: Password for the domain admin user
+              type: String
+              default: !Ref DomainAdminPassword
+          DomainAdminUser:
+              default: !Ref DomainAdminUser
+              description: User name for the account that will be added as Domain Administrator
+              type: String
+          DomainDNSName:
+              default: !Ref DomainDNSName
+              description: Fully qualified domain name of the forest root domain
+              type: String
+          DomainNetBIOSName:
+              default: !Ref DomainNetBIOSName
+              description: NetBIOS name of the domain
+              type: String
         mainSteps:
-          - action: 'aws:runShellScript'
-            name: downloadICNUtilsFile
+          - action: 'aws:runPowerShellScript'
+            name: downloadScriptFile
+            inputs:
+              runCommand:
+                - Import-Module BitsTransfer
+                - >-
+                  Start-BitsTransfer -Source
+                  'https://ibm-fncm-assets.s3.amazonaws.com/scripts/FNCM_populateLdap.ps1'
+                  -Destination "C:\AWSQuickstart\FNCM_populateLdap.ps1"
+          - action: 'aws:runPowerShellScript'
+            name: addUsersGroups
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/ICNutils.zip'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_ICNutils.zip'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: downloadICNScript
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_createDesktop.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_createDesktop.sh'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: setFilePermissions
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"chown"'
-                    - '-R ec2-user:ec2-user /home/ec2-user'
-                    - ';'
-                    - '"chmod"'
-                    - '755 /home/ec2-user/FNCM_*.sh'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: runICNScript
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"/home/ec2-user/FNCM_createDesktop.sh"'
-                    - '{{ICNNodeName}}'
-                    - '{{ICNNodePort}}'
+                  - - '& "C:\AWSQuickstart\FNCM_populateLdap.ps1"'
+                    - '{{DomainDNSName}}'
+                    - '{{DomainAdminUser}}'
+                    - '{{DomainNetBIOSName}}'
                     - '{{DomainAdminPassword}}'
-                    - '{{CPENodeName}}'
-                    - '{{CPENodePort}}'
-              workingDirectory: '/home/ec2-user'
+              workingDirectory: 'C:\AWSQuickstart'
   SSMSendCommandPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
     Properties:
@@ -196,10 +179,10 @@ Resources:
         - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
         - !Ref SSMSendCommandPolicy
-  ExecuteContainerInitDocumentLambda:
+  ExecuteADPopulateDocumentLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - ICNContainerInitDocument
+      - PopulateDSConfigDocument
       - SSMSendCommandLambdaRole
     Properties:
       Handler: index.lambda_handler
@@ -222,19 +205,15 @@ Resources:
             - '        else:'
             - '            ssm = boto3.client(''ssm'')'
             - ''
-            - '            asg = boto3.client(''autoscaling'')'
-            - '            asg_name = event[''ResourceProperties''][''BastionASGName'']'
-            - '            responseAsg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])'
-            - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
+            - '            instanceId = event[''ResourceProperties''][''InstanceId'']'
             - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
             - '            responseData = {}'
-            - '            print(''Bastion Node Instance: '' + instanceId)'
             - ''
             - '            response=ssm.send_command('
             - '                InstanceIds = [instanceId],'
             - '                DocumentName=ssmDocument,'
             - '                TimeoutSeconds=3600,'
-            - '                Comment=''Create Navigator Desktop and Repository'','
+            - '                Comment=''Populate Active Directory Users and Groups'','
             - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True, ''CloudWatchLogGroupName'': ''QuickStartLogs''},'
             - '                MaxConcurrency=''50'','
             - '                MaxErrors=''5'','
@@ -242,26 +221,25 @@ Resources:
             - ''
             - '            cmdId = response[''Command''][''CommandId'']'
             - '            responseData[''CommandId''] = cmdId'
-            - '            print(''Started object creation in CommandId: '' + cmdId)'
-            - '            print(''Bastion Node Instance: '' + instanceId)'
+            - '            print(''Started AD population in CommandId: '' + cmdId)'
             - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
             - '    except Exception as e:'
             - '        logging.error(''Exception: %s'' % e, exc_info=True)'
             - '        status = cfnresponse.FAILED'
             - '        cfnresponse.send(event, context, status, {}, None)'
-      Description: Executes ICN initialization scripts on the Bastion host
+      Description: Executes AD Populate SSM document on AD DC1 server instance
       MemorySize: 320
       Timeout: 180
       Role: !GetAtt
         - SSMSendCommandLambdaRole
         - Arn
-  ExecuteICNContainerInitDocument:
-    Type: 'Custom::ExecuteICNContainerInitDocument'
+  ExecuteADPopulateDocument:
+    Type: 'Custom::ExecuteSnowflakeDocument'
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt
-        - ExecuteContainerInitDocumentLambda
+        - ExecuteADPopulateDocumentLambda
         - Arn
-      SSMDocument: !Ref ICNContainerInitDocument
-      BastionASGName: !Ref BastionASGName
+      SSMDocument: !Ref PopulateDSConfigDocument
+      InstanceId: !Ref DCInstanceId
       QuickStartLogs: !Ref QuickStartLogs

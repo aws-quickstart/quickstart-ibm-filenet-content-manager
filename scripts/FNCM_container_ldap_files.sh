@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Container configuration ldap file updates
 
 # Timeout value for file download

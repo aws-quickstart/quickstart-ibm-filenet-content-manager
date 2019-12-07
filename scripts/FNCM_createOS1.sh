@@ -55,14 +55,14 @@ CPE_LogLocation="/data/ecm/cpe/logstore/$CPE_PodName"
 FN_LogLocation="/data/ecm/cpe/fnlogstore/$CPE_PodName"
 
 # Set timeout values in minutes
-TIME_OUT=15
+TIME_OUT=30
 
 # Set Java classpath to include required jar files
 LIBCLASSPATH="/home/ec2-user/cpelib/CPEUtils.jar:/home/ec2-user/cpelib/Jace.jar:/home/ec2-user/cpelib/log4j.jar:/home/ec2-user/cpelib/stax-api.jar:/home/ec2-user/cpelib/xercesImpl.jar:/home/ec2-user/cpelib/xlxpScanner.jar:/home/ec2-user/cpelib/xlxpScannerUtils.jar"
 
 # Check whether CPE Domain is ready - then create the Object Store
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isDomainReady=$(cat $CPE_LogLocation/messages.log | grep "PE Server started")
 	if [[ "$isDomainReady" != "" ]] ;then
@@ -74,14 +74,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE did not start successfully. Exiting..."
         exit
 fi
 
 # Check whether Object Store is ready - then create the Workflow system
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -94,14 +94,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Create an Advanced Storge Area - check whether Object Store is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -114,14 +114,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Configure CSS Search - when CPE Domain is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isDomainReady=$(cat $CPE_LogLocation/messages.log | grep "PE Server started")
 	if [[ "$isDomainReady" != "" ]] ;then
@@ -134,14 +134,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Create Index Area in Object Store - when Object Store is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -154,14 +154,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Enable CBR on Object Store - when Object Store is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -174,14 +174,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Create a sample folder - when Object Store is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -194,14 +194,14 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi
 
 # Create a sample document - when Object Store is ready
 i=0
-while(($i<$TIME_OUT*2))
+while(($i<$TIME_OUT))
 do
 	isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 	if [[ "$isOSReady" != "" ]] ;then
@@ -214,7 +214,7 @@ do
 		let i++
 	fi
 done
-if [[ $i -eq $TIME_OUT*2 ]]; then
+if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
         exit
 fi

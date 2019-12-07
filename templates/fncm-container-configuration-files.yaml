@@ -64,8 +64,8 @@ Parameters:
     Type: String
   ORAFilesLocation:
     Description: Provide the S3 location of the downloaded Oracle client files.
-        E.g., https://aws-quickstart-<mylocation>.s3.amazonaws.com
-        Refer to the deployment guide for more information
+        E.g., s3://ibm-fncm-assets/oracle_client_files
+        Refer to the deployment guide for more information on downloading the client files and obtaining the location
     Type: String
   DBName:
     Description: The database name
@@ -170,9 +170,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/securityUtility.zip'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_securityUtility.zip'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_securityUtility.zip'
+                    - '/home/ec2-user/securityUtility.zip'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadLdapFile
@@ -180,9 +181,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/ldap.xml'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_ldap.template'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_ldap.template'
+                    - '/home/ec2-user/ldap.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadDriverFile
@@ -190,9 +192,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/OraJDBCDriver.xml'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_OraJDBCDriver.template'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_OraJDBCDriver.template'
+                    - '/home/ec2-user/OraJDBCDriver.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadJDBCDriver
@@ -200,9 +203,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/ojdbc8.jar'
+                  - - '"aws"'
+                    - 's3 cp'
                     - '{{ORAFilesLocation}}/ojdbc8.jar'
+                    - '/home/ec2-user/ojdbc8.jar'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadGcdFile
@@ -210,9 +214,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/GCD.xml'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_GCD.template'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_GCD.template'
+                    - '/home/ec2-user/GCD.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadObjectstoreFile
@@ -220,9 +225,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/OS1.xml'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_OS1.template'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_OS1.template'
+                    - '/home/ec2-user/OS1.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadNavigatorFile
@@ -230,9 +236,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/ICNDS.xml'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_ICNDS.template'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_ICNDS.template'
+                    - '/home/ec2-user/ICNDS.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadDatabaseScript
@@ -240,9 +247,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_container_database_files.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_container_database_files.sh'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_container_database_files.sh'
+                    - '/home/ec2-user/FNCM_container_database_files.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadLdapScript
@@ -250,9 +258,10 @@ Resources:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"curl"'
-                    - '-o /home/ec2-user/FNCM_container_ldap_files.sh'
-                    - 'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_container_ldap_files.sh'
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_container_ldap_files.sh'
+                    - '/home/ec2-user/FNCM_container_ldap_files.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions

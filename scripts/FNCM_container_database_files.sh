@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Container configuration file updates
 
 # Timeout value for file download
