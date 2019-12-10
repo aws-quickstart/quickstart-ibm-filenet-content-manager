@@ -473,3 +473,9 @@ Outputs:
     Value: !GetAtt IamStack.Outputs.NodeInstanceRoleArn
   CleanupSecurityGroupDependenciesLambdaArn:
     Value: !GetAtt FunctionStack.Outputs.CleanupSecurityGroupDependenciesLambdaArn
+  BastionHostRole:
+    Value: !If
+      - EnableBastion
+      - !GetAtt BastionStack.Outputs.BastionHostRole
+      - ""
+
