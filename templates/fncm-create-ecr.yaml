@@ -7,6 +7,9 @@ Parameters:
   IAMAPIKeyword:
     Type: String
     Description: Keyword specified by the enduser
+  BastionHostRole:
+    Type: String
+    Description: IAM Role of Bastion Host
 ## Conditions ##
 Conditions:
   # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
@@ -57,6 +60,52 @@ Resources:
            Parameters:
              InputString: !Sub ${AWS::StackName}-crs
              Operation: Lower      
+  # Creating ECR Policy
+  CreateECRPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Policy for ECR
+      Path: /
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: 'ecr:GetAuthorizationToken'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:BatchCheckLayerAvailability'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:GetDownloadUrlForLayer'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:GetRepositoryPolicy'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:DescribeRepositories'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:ListImages'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:DescribeImages'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:BatchGetImage'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:InitiateLayerUpload'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:UploadLayerPart'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:CompleteLayerUpload'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecr:PutImage'
+            Resource: '*'
+      Roles: [!Ref BastionHostRole]
 Outputs:    
   CPEArn:
     Value: !GetAtt CPERepo.Arn

@@ -1,9 +1,9 @@
 general:
-  s3_bucket: aws-quickstart-fncm
+  s3_bucket: 
   parameters:
     KeyPair: aws-quickstart-useast2.pem
 project:
-  name: fncm-aws-taskcat
+  name: quickstart-ibm-filenet-content-manager
   owner: abrakhan@us.ibm.com
   regions:
     - us-east-2
@@ -46,13 +46,11 @@ tests:
       PublicSubnet1CIDR: "10.0.128.0/20"
       PublicSubnet2CIDR: "10.0.144.0/20"
       PublicSubnet3CIDR: "10.0.160.0/20"
-      QSS3BucketName: "aws-quickstart-fncm"
-      QSS3KeyPrefix: "aws-quickstart-fncm/"
+      QSS3BucketName: 
+      QSS3KeyPrefix: "quickstart-ibm-filenet-content-manager/"
       RDGWCIDR: "0.0.0.0/0"
       RDGWInstanceType: "t2.large"
       RemoteAccessCIDR: "0.0.0.0/0"
       VPCCIDR: "10.0.0.0/16"
-      awsAccessKeyID: ""
-      awsAccessKeySecret: ""
-      sslCertArn: ""
+      SSLCertARN: ""
       

@@ -21,8 +21,6 @@ Metadata:
         default: Amazon EC2 configuration
       Parameters:
       - KeyPairName
-      - awsAccessKeyID
-      - awsAccessKeySecret
       - SSLCertARN
     - Label:
         default: Amazon EKS configuration
@@ -80,10 +78,6 @@ Metadata:
         default: Availability Zones
       KeyPairName:
         default: SSH key name
-      awsAccessKeyID:
-        default: AWS Access Key ID
-      awsAccessKeySecret:
-        default: AWS Secret Access Key
       SSLCertARN:
         default: SSL/TLS certificate ARN
       PrivateSubnet1CIDR:
@@ -176,16 +170,6 @@ Parameters:
     Description: The name of an existing public/private key pair, which allows you
       to securely connect to your instance after it launches.
     Type: AWS::EC2::KeyPair::KeyName
-  awsAccessKeyID:
-    NoEcho: 'true'
-    Description: The AWS Access Key to access your Elastic Container Registry (ECR), where FileNet Content Manager docker images will reside.
-    Type: String
-    MinLength: '20'
-  awsAccessKeySecret:
-    NoEcho: 'true'
-    Description: The AWS Secret Access Key that corresponds to the Access Key ID above.
-    Type: String
-    MinLength: '20'
   SSLCertARN:
     Type: String
     MinLength: '20'
@@ -556,7 +540,7 @@ Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/aws-vpc.template'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template'
       Parameters:
         AvailabilityZones: !Join [ ',', !Ref 'AvailabilityZones' ]
         KeyPairName: !Ref 'KeyPairName'
@@ -610,6 +594,7 @@ Resources:
       Parameters:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
+        BastionHostRole: !GetAtt 'EKSStack.Outputs.BastionHostRole'
   FNCMDockerRegistryStack:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
@@ -622,8 +607,6 @@ Resources:
         ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         LowerCaseStackName: !GetAtt 'FNCMECRStack.Outputs.LowerCaseStackName'
-        awsAccessKeyID: !Ref 'awsAccessKeyID'
-        awsAccessKeySecret: !Ref 'awsAccessKeySecret'
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
 # Create the Oracle Master Database
   RDSStack:

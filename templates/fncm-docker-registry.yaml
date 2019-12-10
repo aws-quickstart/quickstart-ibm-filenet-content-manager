@@ -16,17 +16,6 @@ Parameters:
   ECROrg:
     Description: The AWS organization where ECR is located
     Type: String
-  awsAccessKeyID:
-    NoEcho: 'true'
-    Description: The AWS Access Key to access your Elastic Container Registry (ECR).  
-      The docker container repositories is where the FileNet Content Manager 
-    Type: String
-    MinLength: '20'
-  awsAccessKeySecret:
-    NoEcho: 'true'
-    Description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
-    Type: String
-    MinLength: '20'
   FinalLogin:
     Type: String
     Description: Final Login string
@@ -57,15 +46,6 @@ Resources:
           FinalLogin:
             default: !Ref FinalLogin
             description: The final login string
-            type: String
-          awsAccessKeyIDString:
-            default: !Ref awsAccessKeyID
-            description: The AWS Access Key to access your Elastic Container Registry (ECR).  
-              The docker container repositories is where the FileNet Content Manager 
-            type: String
-          awsAccessKeySecretString:
-            default: !Ref awsAccessKeySecret
-            description: The AWS Secret Access Key that corresponds to the Access Key ID above.  
             type: String
           CPERepoURI:
             default: !Join
@@ -218,59 +198,15 @@ Resources:
                     - 'tag cp.icr.io/cp/cp4a/fncm/crs:ga-553-p8cgql-if001 {{CRSRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
-            name: SetAWSAccessKeyID
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"aws"'
-                    - ' configure set aws_access_key_id {{awsAccessKeyIDString}}'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: SetAWSSecretAccessKey
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"aws"'
-                    - ' configure set aws_secret_access_key {{awsAccessKeySecretString}}'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: SetAWSRegion
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"aws"'
-                    - ' configure set default.region {{ECRRegion}}'
-              workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
             name: ExecuteAWSGetECRLogin
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"eval"'
-                    - '`aws ecr get-login --no-include-email`'
-                    - '> /root/docker_login.sh'
+                    - '`aws ecr get-login --region {{ECRRegion}} --no-include-email`'
+                    - '> /root/docker_login.out'
               workingDirectory: '/home/ec2-user'
-          - action: 'aws:runShellScript'
-            name: ChangeScriptPermissions
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"chmod"'
-                    - 'a+x /root/docker_login.sh'
-              workingDirectory: '/home/ec2-user'              
-          - action: 'aws:runShellScript'
-            name: ExecuteAWSGetECRLoginScript
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"/root/docker_login.sh"'
-              workingDirectory: '/home/ec2-user'      
           - action: 'aws:runShellScript'
             name: PushCSSContainer
             inputs:
