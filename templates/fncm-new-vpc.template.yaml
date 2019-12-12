@@ -586,7 +586,7 @@ Resources:
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
         BastionBootstrapScript: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
         BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
-        AdditionalEKSAdminArns: !Join [ ",", !Ref AdditionalEKSAdminArns ]
+        AdditionalEKSAdminArns: !Join [ ",", [!Ref AdditionalEKSAdminArns, !GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
   FNCMSGStack:
