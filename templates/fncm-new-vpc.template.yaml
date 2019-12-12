@@ -562,6 +562,7 @@ Resources:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-iam.template.yaml'
       Parameters:
         QSS3BucketName: !Ref QSS3BucketName
+        ORAFilesLocation: !Ref ORAFilesLocation
   EKSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -683,7 +684,7 @@ Resources:
         PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
         PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
         QSS3BucketName: !Ref 'QSS3BucketName'
-        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/"
         RDGWInstanceType: !Ref 'RDGWInstanceType'
         RDGWCIDR: !Ref 'RDGWCIDR'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
