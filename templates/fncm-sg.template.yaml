@@ -55,7 +55,6 @@ Resources:
     DependsOn:
       - DescribeStackRole
     Properties:
-      FunctionName: !Sub "DescribeStackResourcesLambda-${AWS::StackName}"
       Code:
         ZipFile: |
           import boto3
