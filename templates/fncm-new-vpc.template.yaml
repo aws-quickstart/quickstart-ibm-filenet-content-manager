@@ -244,7 +244,7 @@ Parameters:
   AdditionalEKSAdminArns:
     Default: ""
     Description: "[OPTIONAL] The comma-separated list of IAM users/role Amazon Resource Names (ARNs) to be granted admin access to the EKS cluster."
-    Type: CommaDelimitedList
+    Type: String
   NodeInstanceType:
     Default: t2.xlarge
     AllowedValues:
@@ -586,7 +586,7 @@ Resources:
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
         BastionBootstrapScript: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
         BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
-        AdditionalEKSAdminArns: !Join [ ",", [!GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
+        AdditionalEKSAdminArns: !Join [ ",", [!Ref AdditionalEKSAdminArns, !GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
   FNCMSGStack:
