@@ -421,9 +421,9 @@ Parameters:
         More information is available here - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
     Type: String
     AllowedValues:
-      - true
-      - false
-    Default: true
+      - 'true'
+      - 'false'
+    Default: 'true'
 # Active Directory Parameters
   ADServer1InstanceType:
     AllowedValues:
@@ -556,10 +556,16 @@ Resources:
         PublicSubnetTag2: !Sub "kubernetes.io/cluster/${AWS::StackName}-${AWS::Region}=owned"
         PublicSubnetTag3: "kubernetes.io/role/elb="
         VPCCIDR: !Ref 'VPCCIDR'
+  FNCMIAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-iam.template.yaml'
+      Parameters:
+        QSS3BucketName: !Ref QSS3BucketName
   EKSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/amazon-eks.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/templates/amazon-eks.template.yaml'
       Parameters:
         PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
         PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
@@ -577,10 +583,19 @@ Resources:
         LambdaZipsBucketName: !Ref LambdaZipsBucketName
         NodeInstanceType: !Ref NodeInstanceType
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionBootstrapScript: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
+        BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
         AdditionalEKSAdminArns: !Join [ ",", !Ref AdditionalEKSAdminArns ]
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
         VPCCIDR: !Ref 'VPCCIDR'
+  FNCMSGStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-sg.template.yaml'
+      Parameters:
+        VPCCIDR: !Ref VPCCIDR
+        BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
   FNCMStringFuctionstack:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
@@ -594,7 +609,7 @@ Resources:
       Parameters:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
-        BastionHostRole: !GetAtt 'EKSStack.Outputs.BastionHostRole'
+        BastionHostRole: !GetAtt FNCMIAMStack.Outputs.BastionRole
   FNCMDockerRegistryStack:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack

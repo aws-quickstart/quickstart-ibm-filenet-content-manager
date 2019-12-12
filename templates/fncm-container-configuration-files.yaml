@@ -205,7 +205,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - '{{ORAFilesLocation}}/ojdbc8.jar'
+                    - 's3://{{ORAFilesLocation}}/ojdbc8.jar'
                     - '/home/ec2-user/ojdbc8.jar'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
