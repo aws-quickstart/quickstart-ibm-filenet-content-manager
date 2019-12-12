@@ -589,7 +589,6 @@ Resources:
         AdditionalEKSAdminArns: !Join [ ",", !Ref AdditionalEKSAdminArns ]
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
-        VPCCIDR: !Ref 'VPCCIDR'
   FNCMSGStack:
     Type: AWS::CloudFormation::Stack
     Properties:
