@@ -10,6 +10,9 @@ Parameters:
     Default: 10.0.0.0/16
     Description: CIDR Block for the VPC.
     Type: String
+  EKSStack:
+    Type: String
+    Description: The ID of the EKS Stack.
 Resources:
   BastionSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -19,3 +22,194 @@ Resources:
       FromPort: 8081
       ToPort: 16686
       CidrIp: !Ref 'VPCCIDR'
+
+  DescribeStackRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "lambda_policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action:
+                  - "cloudformation:DescribeStackResources"
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+
+  DescribeStackResourcesLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+      - DescribeStackRole
+    Properties:
+      FunctionName: !Sub "DescribeStackResourcesLambda-${AWS::StackName}"
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import logging
+          import json
+          import cfnresponse
+
+          def extract_fs_id(stack_name):
+              try:
+                  cfn_client = boto3.client('cloudformation')
+                  efs_stack = cfn_client.describe_stack_resources(
+                      StackName=stack_name,
+                      LogicalResourceId='EfsStack'
+                  )
+                  EFS_STACK_ID = efs_stack['StackResources'][0]['PhysicalResourceId']
+                  efs_id_resource = cfn_client.describe_stack_resources(
+                      StackName=EFS_STACK_ID,
+                      LogicalResourceId='EFSFileSystem'
+                  )
+                  EFS_FS_ID = efs_id_resource['StackResources'][0]['PhysicalResourceId']
+                  return EFS_FS_ID
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def handler(event, context):
+            print('Received event: %s' % json.dumps(event))
+            status = cfnresponse.SUCCESS
+            try:
+                if event['RequestType'] == 'Delete':
+                    cfnresponse.send(event, context, status, {})
+                else:
+                    EKS_STACK_ID = event['ResourceProperties']['EKSStack']
+                    responseData = {}
+                    responseData['efs_fs_id'] = extract_fs_id(EKS_STACK_ID)
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+                logging.error('Exception: %s' % e, exc_info=True)
+                status = cfnresponse.FAILED
+                cfnresponse.send(event, context, status, {}, None)
+      Handler: "index.handler"
+      Runtime: "python3.6"
+      Timeout: "5"
+      Role: !GetAtt DescribeStackRole.Arn
+
+  GetEFSID:
+    Type: "Custom::GetEFSID"
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt DescribeStackResourcesLambda.Arn
+      EKSStack: !Ref 'EKSStack'
+
+  ModifyEfsMountSGRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "lambda_policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:DescribeNetworkInterfaceAttribute"
+                  - "ec2:ModifyNetworkInterfaceAttribute"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "elasticfilesystem:DescribeMountTargets"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
+                  - "elasticfilesystem:ModifyMountTargetSecurityGroups"
+                Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${GetEFSID.efs_fs_id}"
+
+  ModifyEFSMountSGLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import logging
+          import json
+          import cfnresponse
+
+          def modify_efs_mount(fs_id, bastion_sg):
+              try:
+                  efs_client = boto3.client('efs')
+                  efs_mnt_targets = efs_client.describe_mount_targets(
+                      FileSystemId=fs_id
+                  )
+
+                  for mt in efs_mnt_targets['MountTargets']:
+                      mt_sg_desc = efs_client.describe_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId']
+                      )
+                      mt_sg = mt_sg_desc['SecurityGroups']
+                      mt_sg.append(bastion_sg)
+
+                      efs_client.modify_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId'],
+                          SecurityGroups=mt_sg
+                      )
+
+                  for mt in efs_mnt_targets['MountTargets']:
+                      mt_sg_desc = efs_client.describe_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId']
+                      )
+                      mt_sg = mt_sg_desc['SecurityGroups']
+                      print(mt_sg)
+
+                  return "SUCCESS"
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def handler(event, context):
+            print('Received event: %s' % json.dumps(event))
+            status = cfnresponse.SUCCESS
+            try:
+                if event['RequestType'] == 'Delete':
+                    cfnresponse.send(event, context, status, {})
+                else:
+                    fs_id = event['ResourceProperties']['FSID']
+                    bastion_sg = event['ResourceProperties']['BastionSG']
+                    responseData = {}
+                    responseData['status'] = modify_efs_mount(fs_id, bastion_sg)
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+                logging.error('Exception: %s' % e, exc_info=True)
+                status = cfnresponse.FAILED
+                cfnresponse.send(event, context, status, {}, None)
+      Handler: "index.handler"
+      Runtime: "python3.6"
+      Timeout: "5"
+      Role: !GetAtt ModifyEfsMountSGRole.Arn
+
+  ModifyEFSMountSG:
+    Type: "Custom::ModifyEFSMountSG"
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt ModifyEFSMountSGLambda.Arn
+      FSID: !GetAtt GetEFSID.efs_fs_id
+      BastionSG: !Ref BastionSecurityGroup

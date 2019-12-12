@@ -590,14 +590,16 @@ Resources:
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
   FNCMSGStack:
+    DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-sg.template.yaml'
       Parameters:
         VPCCIDR: !Ref VPCCIDR
         BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
+        EKSStack: !Ref EKSStack
   FNCMStringFuctionstack:
-    DependsOn: EKSStack
+    DependsOn: FNCMSGStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-stringfunctions.yaml'
