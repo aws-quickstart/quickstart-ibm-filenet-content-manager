@@ -41,6 +41,10 @@ Resources:
                 Resource: !Sub 'arn:aws:s3:::${ORAFilesLocation}/*'
               - Effect: Allow
                 Action:
+                  - s3:getObject
+                Resource: !Sub 'arn:aws:s3:::ibm-fncm-assets/*'
+              - Effect: Allow
+                Action:
                   - logs:CreateLogStream
                   - logs:GetLogEvents
                   - logs:PutLogEvents
