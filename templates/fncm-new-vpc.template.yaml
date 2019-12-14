@@ -626,6 +626,7 @@ Resources:
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         LowerCaseStackName: !GetAtt 'FNCMECRStack.Outputs.LowerCaseStackName'
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the Oracle Master Database
   RDSStack:
     DependsOn: EKSStack
@@ -705,6 +706,7 @@ Resources:
         DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the Oracle tablespaces and users for FNCM
   RDSObjectCreation:
     DependsOn: RDSStack
@@ -721,6 +723,7 @@ Resources:
         ORAFilesLocation: !Ref 'ORAFilesLocation'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the CPE and ICN container XML files
   ContainerConfigFiles:
     DependsOn: [PopulateActiveDirectoryDS, RDSObjectCreation]
@@ -739,6 +742,7 @@ Resources:
         ORAFilesLocation: !Ref 'ORAFilesLocation'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create PVs, PVCs, deploy CPE, CSS, ICN, CRS, and CMIS
   # Depends on the configration XML files to be available in /home/ec2-user in order to copy the files into the configuration PVs
   FNCMDeploymentStack:
@@ -761,6 +765,7 @@ Resources:
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         SSLCertARN: !Ref SSLCertARN
         NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
@@ -792,6 +797,7 @@ Resources:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the ICN Desktop and Repository
   ICNInitialization:
     DependsOn: CPEInitialization
@@ -807,6 +813,7 @@ Resources:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 Outputs:
   KubeConfigPath:
     Value: !GetAtt EKSStack.Outputs.KubeConfigPath
