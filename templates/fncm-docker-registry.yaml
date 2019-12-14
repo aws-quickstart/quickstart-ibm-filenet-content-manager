@@ -22,6 +22,9 @@ Parameters:
   LowerCaseStackName:
     Type: String
     Description: The name of the stack in lower case
+  FNCMSSMSendCommandLambdaRoleARN:
+    Type: String
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
 Resources:
   LoginPullPushContainers:
     Type: 'AWS::SSM::Document'
@@ -252,39 +255,10 @@ Resources:
                   - - '"/usr/bin/docker"'
                     - 'push {{CRSRepoURI}}'
               workingDirectory: '/home/ec2-user'
-  dbamcSSMSendCommandPolicy:
-    Type: 'AWS::IAM::ManagedPolicy'
-    Properties:
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 'ssm:SendCommand'
-            Effect: Allow
-            Resource: '*'
-  dbamcSSMSendCommandLambdaRole:
-    DependsOn:
-      - dbamcSSMSendCommandPolicy
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: /
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          Effect: Allow
-          Principal:
-            Service: lambda.amazonaws.com
-          Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess'
-        - !Ref dbamcSSMSendCommandPolicy
   dbamcExecuteLoginPullPushContainersDocumentLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
       - LoginPullPushContainers
-      - dbamcSSMSendCommandLambdaRole
     Properties:
       Handler: index.lambda_handler
       Runtime: python3.7
@@ -335,9 +309,7 @@ Resources:
       Description: Pulling docker images, tagging images, and pushing to AWS ECR
       MemorySize: 320
       Timeout: 180
-      Role: !GetAtt
-        - dbamcSSMSendCommandLambdaRole
-        - Arn
+      Role: !Ref FNCMSSMSendCommandLambdaRoleARN
   dbamcExecutedbamcConfigObjectsDocument1:
     Type: 'Custom::dbamcExecutedbamcConfigObjectsDocument1'
     Version: '1.0'

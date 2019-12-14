@@ -4,24 +4,28 @@ Parameters:
   BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
     Description: Bastion security group ID
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+  EKSStack:
+    Type: String
+    Description: The ID of the EKS Stack.
   VPCCIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
     Default: 10.0.0.0/16
     Description: CIDR Block for the VPC.
     Type: String
-  EKSStack:
-    Type: String
-    Description: The ID of the EKS Stack.
 Resources:
+
   BastionSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref 'BastionSecurityGroup'
-      IpProtocol: tcp
-      FromPort: 8081
-      ToPort: 16686
-      CidrIp: !Ref 'VPCCIDR'
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      CidrIp: !Ref VPCCIDR
 
   DescribeStackRole:
     Type: "AWS::IAM::Role"
@@ -49,6 +53,10 @@ Resources:
                 Action:
                   - "cloudformation:DescribeStackResources"
                 Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+              - Effect: "Allow"
+                Action:
+                  - "autoscaling:DescribeAutoScalingGroups"
+                Resource: "*"
 
   DescribeStackResourcesLambda:
     Type: "AWS::Lambda::Function"
@@ -81,6 +89,16 @@ Resources:
                   print(e)
                   return str(e)
 
+          def extract_bastion_instance_id(asg_name):
+              try:
+                  asg_client = boto3.client('autoscaling')
+                  responseAsg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+                  BASTION_INSTANCE_ID = responseAsg['AutoScalingGroups'][0]['Instances'][0]['InstanceId']
+                  return BASTION_INSTANCE_ID
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
           def handler(event, context):
             print('Received event: %s' % json.dumps(event))
             status = cfnresponse.SUCCESS
@@ -89,8 +107,11 @@ Resources:
                     cfnresponse.send(event, context, status, {})
                 else:
                     EKS_STACK_ID = event['ResourceProperties']['EKSStack']
+                    BASTION_ASG_NAME = event['ResourceProperties']['BastionASGName']
                     responseData = {}
                     responseData['efs_fs_id'] = extract_fs_id(EKS_STACK_ID)
+                    responseData['bastion_instance_id'] = extract_bastion_instance_id(BASTION_ASG_NAME)
+                    print(responseData)
                     cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
             except Exception as e:
                 logging.error('Exception: %s' % e, exc_info=True)
@@ -101,12 +122,13 @@ Resources:
       Timeout: "5"
       Role: !GetAtt DescribeStackRole.Arn
 
-  GetEFSID:
-    Type: "Custom::GetEFSID"
+  GetStackResources:
+    Type: "Custom::GetStackResources"
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt DescribeStackResourcesLambda.Arn
       EKSStack: !Ref 'EKSStack'
+      BastionASGName: !Ref BastionASGName
 
   ModifyEfsMountSGRole:
     Type: "AWS::IAM::Role"
@@ -140,7 +162,7 @@ Resources:
                   - "elasticfilesystem:DescribeMountTargets"
                   - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                   - "elasticfilesystem:ModifyMountTargetSecurityGroups"
-                Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${GetEFSID.efs_fs_id}"
+                Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${GetStackResources.efs_fs_id}"
 
   ModifyEFSMountSGLambda:
     Type: "AWS::Lambda::Function"
@@ -210,5 +232,42 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt ModifyEFSMountSGLambda.Arn
-      FSID: !GetAtt GetEFSID.efs_fs_id
+      FSID: !GetAtt GetStackResources.efs_fs_id
       BastionSG: !Ref BastionSecurityGroup
+
+  FNCMSSMSendCommandPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${GetStackResources.bastion_instance_id}"
+
+  FNCMSSMSendCommandLambdaRole:
+    DependsOn:
+      - FNCMSSMSendCommandPolicy
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess'
+        - !Ref FNCMSSMSendCommandPolicy
+Outputs:
+  FNCMSSMSendCommandLambdaRoleArn:
+    Value: !GetAtt FNCMSSMSendCommandLambdaRole.Arn

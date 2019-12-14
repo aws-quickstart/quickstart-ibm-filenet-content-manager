@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Deploys FileNet Content Manager into a new EKS cluster in a new VPC
+Description: Deploys FileNet Content Manager into a new EKS cluster in a new VPC. (qs-1q94l6023)
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -597,6 +597,7 @@ Resources:
       Parameters:
         VPCCIDR: !Ref VPCCIDR
         BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         EKSStack: !Ref EKSStack
   FNCMStringFuctionstack:
     DependsOn: FNCMSGStack

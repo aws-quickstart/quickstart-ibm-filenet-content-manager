@@ -109,6 +109,9 @@ Parameters:
   BastionASGName:
     Description: Auto Scaling Group Name of the Bastion Host
     Type: String
+  FNCMSSMSendCommandLambdaRoleARN:
+    Type: String
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup
@@ -298,38 +301,10 @@ Resources:
                     - '{{BaseDN1}}'
                     - '{{BaseDN2}}'
               workingDirectory: '/home/ec2-user'
-  SSMSendCommandPolicy:
-    Type: 'AWS::IAM::ManagedPolicy'
-    Properties:
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 'ssm:SendCommand'
-            Effect: Allow
-            Resource: '*'
-  SSMSendCommandLambdaRole:
-    DependsOn:
-      - SSMSendCommandPolicy
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: /
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          Effect: Allow
-          Principal:
-            Service: lambda.amazonaws.com
-          Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-        - !Ref SSMSendCommandPolicy
   ExecuteContainerConfigDocumentLambda:
     Type: 'AWS::Lambda::Function'
     DependsOn:
       - ContainerConfigDocument
-      - SSMSendCommandLambdaRole
     Properties:
       Handler: index.lambda_handler
       Runtime: python3.7
@@ -380,9 +355,7 @@ Resources:
       Description: Executes Oracle Schema creation SQL script on Bastion host
       MemorySize: 320
       Timeout: 180
-      Role: !GetAtt
-        - SSMSendCommandLambdaRole
-        - Arn
+      Role: !Ref FNCMSSMSendCommandLambdaRoleARN
   ExecuteContainerConfigDocument:
     Type: 'Custom::ExecuteContainerConfigDocument'
     Version: '1.0'
