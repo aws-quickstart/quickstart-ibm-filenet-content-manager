@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Deploys FileNet Content Manager into a new EKS cluster in a new VPC
+Description: Deploys FileNet Content Manager into a new EKS cluster in a new VPC. (qs-1q94l6023)
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -244,7 +244,7 @@ Parameters:
   AdditionalEKSAdminArns:
     Default: ""
     Description: "[OPTIONAL] The comma-separated list of IAM users/role Amazon Resource Names (ARNs) to be granted admin access to the EKS cluster."
-    Type: CommaDelimitedList
+    Type: String
   NodeInstanceType:
     Default: t2.xlarge
     AllowedValues:
@@ -365,8 +365,8 @@ Parameters:
     Description: Copy/paste the IBM entitlement key here for Quick Start to pull FileNet Content Manager docker images from IBM Entitlement Registry.  To obtain Entitlement Key, go here https://myibm.ibm.com/products-services/containerlibrary
 # Oracle RDS Database Parameters
   ORAFilesLocation:
-    Description: Provide the S3 location of the downloaded Oracle client files.
-        E.g., s3://ibm-fncm-assets/oracle_client_files
+    Description: Provide the S3 location of the downloaded Oracle client files (Please do not include the s3:// and the trailing forward slash)
+        E.g., If the location is "s3://ibm-fncm-assets/oracle_client_files" then enter "ibm-fncm-assets/oracle_client_files"
         Refer to the deployment guide for more information on downloading the client files and obtaining the location
     Type: String
   ORAVersion:
@@ -421,9 +421,9 @@ Parameters:
         More information is available here - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
     Type: String
     AllowedValues:
-      - true
-      - false
-    Default: true
+      - 'true'
+      - 'false'
+    Default: 'true'
 # Active Directory Parameters
   ADServer1InstanceType:
     AllowedValues:
@@ -556,10 +556,17 @@ Resources:
         PublicSubnetTag2: !Sub "kubernetes.io/cluster/${AWS::StackName}-${AWS::Region}=owned"
         PublicSubnetTag3: "kubernetes.io/role/elb="
         VPCCIDR: !Ref 'VPCCIDR'
+  FNCMIAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-iam.template.yaml'
+      Parameters:
+        QSS3BucketName: !Ref QSS3BucketName
+        ORAFilesLocation: !Ref ORAFilesLocation
   EKSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/amazon-eks.template.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/templates/amazon-eks.template.yaml'
       Parameters:
         PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
         PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
@@ -577,24 +584,30 @@ Resources:
         LambdaZipsBucketName: !Ref LambdaZipsBucketName
         NodeInstanceType: !Ref NodeInstanceType
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        AdditionalEKSAdminArns: !Join [ ",", !Ref AdditionalEKSAdminArns ]
+        BastionBootstrapScript: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
+        BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
+        AdditionalEKSAdminArns: !Join [ ",", [!Ref AdditionalEKSAdminArns, !GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
-        VPCCIDR: !Ref 'VPCCIDR'
-  FNCMStringFuctionstack:
+  FNCMSGStack:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-stringfunctions.yaml'
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-sg.template.yaml'
+      Parameters:
+        VPCCIDR: !Ref VPCCIDR
+        BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'        
+        EKSStack: !Ref EKSStack        
   FNCMECRStack:
-    DependsOn: FNCMStringFuctionstack
+    DependsOn: FNCMSGStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-ecr.yaml'
       Parameters:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
-        BastionHostRole: !GetAtt 'EKSStack.Outputs.BastionHostRole'
+        BastionHostRole: !GetAtt FNCMIAMStack.Outputs.BastionRole
   FNCMDockerRegistryStack:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
@@ -603,11 +616,15 @@ Resources:
       Parameters:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
-        CPERepoARN: !GetAtt 'FNCMECRStack.Outputs.CPEArn'
+        CPERepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CPEArn']]
+        CSSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CSSArn']]
+        ICNRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.ICNArn']]
+        CRSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CRSArn']]
+        CMISRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CMISArn']]
         ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
-        LowerCaseStackName: !GetAtt 'FNCMECRStack.Outputs.LowerCaseStackName'
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the Oracle Master Database
   RDSStack:
     DependsOn: EKSStack
@@ -668,7 +685,7 @@ Resources:
         PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
         PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
         QSS3BucketName: !Ref 'QSS3BucketName'
-        QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/"
         RDGWInstanceType: !Ref 'RDGWInstanceType'
         RDGWCIDR: !Ref 'RDGWCIDR'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
@@ -687,6 +704,7 @@ Resources:
         DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn        
   # Create the Oracle tablespaces and users for FNCM
   RDSObjectCreation:
     DependsOn: RDSStack
@@ -703,6 +721,7 @@ Resources:
         ORAFilesLocation: !Ref 'ORAFilesLocation'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the CPE and ICN container XML files
   ContainerConfigFiles:
     DependsOn: [PopulateActiveDirectoryDS, RDSObjectCreation]
@@ -721,6 +740,7 @@ Resources:
         ORAFilesLocation: !Ref 'ORAFilesLocation'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create PVs, PVCs, deploy CPE, CSS, ICN, CRS, and CMIS
   # Depends on the configration XML files to be available in /home/ec2-user in order to copy the files into the configuration PVs
   FNCMDeploymentStack:
@@ -743,6 +763,7 @@ Resources:
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         SSLCertARN: !Ref SSLCertARN
         NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
@@ -774,6 +795,7 @@ Resources:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the ICN Desktop and Repository
   ICNInitialization:
     DependsOn: CPEInitialization
@@ -789,6 +811,7 @@ Resources:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 Outputs:
   KubeConfigPath:
     Value: !GetAtt EKSStack.Outputs.KubeConfigPath

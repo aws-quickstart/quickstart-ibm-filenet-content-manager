@@ -113,9 +113,9 @@ Parameters:
         More informtion is available here - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
     Type: String
     AllowedValues:
-      - true
-      - false
-    Default: true
+      - 'true'
+      - 'false'
+    Default: 'true'
   VPCID:
     Type: AWS::EC2::VPC::Id
     Description: VpcId of your Virtual Private Cloud (VPC)
@@ -246,7 +246,6 @@ Resources:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: FileNet P8 Oracle Database Subnet Group
-      DBSubnetGroupName: P8DBSubnetGroup
       SubnetIds:
         - !Ref 'PublicSubnet1ID'
         - !Ref 'PublicSubnet2ID'

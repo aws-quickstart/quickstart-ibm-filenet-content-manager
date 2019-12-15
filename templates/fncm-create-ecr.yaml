@@ -17,49 +17,15 @@ Conditions:
 Resources:
   CPERepo:
     Type: AWS::ECR::Repository
-    Properties: 
-      RepositoryName:
-        'Fn::Transform':
-         - Name: 'FNCMString'
-           Parameters:
-             InputString: !Sub ${AWS::StackName}-cpe
-             Operation: Lower
   CSSRepo:
     Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName:    
-        'Fn::Transform':
-         - Name: 'FNCMString'
-           Parameters:
-             InputString: !Sub ${AWS::StackName}-css
-             Operation: Lower
   ICNRepo:
     Type: AWS::ECR::Repository
-    Properties: 
-      RepositoryName: 
-        'Fn::Transform':
-         - Name: 'FNCMString'
-           Parameters:
-             InputString: !Sub ${AWS::StackName}-navigator
-             Operation: Lower
   CMISRepo:
     Type: AWS::ECR::Repository
-    Properties: 
-      RepositoryName: 
-        'Fn::Transform':
-         - Name: 'FNCMString'
-           Parameters:
-             InputString: !Sub ${AWS::StackName}-cmis
-             Operation: Lower
   CRSRepo:
     Type: AWS::ECR::Repository
-    Properties: 
-      RepositoryName:
-        'Fn::Transform':
-         - Name: 'FNCMString'
-           Parameters:
-             InputString: !Sub ${AWS::StackName}-crs
-             Operation: Lower      
+
   # Creating ECR Policy
   CreateECRPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
@@ -106,6 +72,7 @@ Resources:
             Action: 'ecr:PutImage'
             Resource: '*'
       Roles: [!Ref BastionHostRole]
+  
 Outputs:    
   CPEArn:
     Value: !GetAtt CPERepo.Arn
@@ -117,13 +84,6 @@ Outputs:
     Value: !GetAtt CMISRepo.Arn
   CRSArn:
     Value: !GetAtt CRSRepo.Arn
-  LowerCaseStackName:
-    Value:
-      'Fn::Transform':
-        - Name: 'FNCMString'
-          Parameters:
-            InputString: !Sub ${AWS::StackName}
-            Operation: Lower
   CustomerLogin:
     Value: !Join
       - ' '

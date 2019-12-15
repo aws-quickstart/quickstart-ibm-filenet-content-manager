@@ -34,7 +34,10 @@ Parameters:
   SSLCertARN:
     Type: String
   NodeInstanceRoleName: 
-    Type: String  
+    Type: String
+  FNCMSSMSendCommandLambdaRoleARN:
+    Type: String
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -681,38 +684,10 @@ Resources:
                     - '"chmod"'
                     - '-R 775 /data'
               workingDirectory: '/home/ec2-user'       
-  fncmSSMSendCommandPolicy:
-    Type: 'AWS::IAM::ManagedPolicy'
-    Properties:
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 'ssm:SendCommand'
-            Effect: Allow
-            Resource: '*'
-  fncmSSMSendCommandLambdaRole:
-    DependsOn:
-      - fncmSSMSendCommandPolicy
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: /
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          Effect: Allow
-          Principal:
-            Service: lambda.amazonaws.com
-          Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-        - !Ref fncmSSMSendCommandPolicy
   fncmExecuteMountPVandConfigDocumentLambda1:
     Type: 'AWS::Lambda::Function'
     DependsOn:
       - fncmMountPVandConfigDocument1
-      - fncmSSMSendCommandLambdaRole
     Properties:
       Handler: index.lambda_handler
       Runtime: python3.7
@@ -763,9 +738,7 @@ Resources:
       Description: Executes PV creation and mount script on Bastion host
       MemorySize: 320
       Timeout: 180
-      Role: !GetAtt
-        - fncmSSMSendCommandLambdaRole
-        - Arn
+      Role: !Ref FNCMSSMSendCommandLambdaRoleARN
   fncmExecuteConfigObjectsDocument1:
     Type: 'Custom::fncmExecuteConfigObjectsDocument1'
     Version: '1.0'

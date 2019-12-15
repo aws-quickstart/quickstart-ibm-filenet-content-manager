@@ -1,0 +1,273 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploys IAM roles and policies required for the AWS EKS Quick Start (qs-1p7nknohl)
+Parameters:
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Bastion security group ID
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+  EKSStack:
+    Type: String
+    Description: The ID of the EKS Stack.
+  VPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Default: 10.0.0.0/16
+    Description: CIDR Block for the VPC.
+    Type: String
+Resources:
+
+  BastionSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'BastionSecurityGroup'
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      CidrIp: !Ref VPCCIDR
+
+  DescribeStackRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "lambda_policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action:
+                  - "cloudformation:DescribeStackResources"
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*"
+              - Effect: "Allow"
+                Action:
+                  - "autoscaling:DescribeAutoScalingGroups"
+                Resource: "*"
+
+  DescribeStackResourcesLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+      - DescribeStackRole
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import logging
+          import json
+          import cfnresponse
+
+          def extract_fs_id(stack_name):
+              try:
+                  cfn_client = boto3.client('cloudformation')
+                  efs_stack = cfn_client.describe_stack_resources(
+                      StackName=stack_name,
+                      LogicalResourceId='EfsStack'
+                  )
+                  EFS_STACK_ID = efs_stack['StackResources'][0]['PhysicalResourceId']
+                  efs_id_resource = cfn_client.describe_stack_resources(
+                      StackName=EFS_STACK_ID,
+                      LogicalResourceId='EFSFileSystem'
+                  )
+                  EFS_FS_ID = efs_id_resource['StackResources'][0]['PhysicalResourceId']
+                  return EFS_FS_ID
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def extract_bastion_instance_id(asg_name):
+              try:
+                  asg_client = boto3.client('autoscaling')
+                  responseAsg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+                  BASTION_INSTANCE_ID = responseAsg['AutoScalingGroups'][0]['Instances'][0]['InstanceId']
+                  return BASTION_INSTANCE_ID
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def handler(event, context):
+            print('Received event: %s' % json.dumps(event))
+            status = cfnresponse.SUCCESS
+            try:
+                if event['RequestType'] == 'Delete':
+                    cfnresponse.send(event, context, status, {})
+                else:
+                    EKS_STACK_ID = event['ResourceProperties']['EKSStack']
+                    BASTION_ASG_NAME = event['ResourceProperties']['BastionASGName']
+                    responseData = {}
+                    responseData['efs_fs_id'] = extract_fs_id(EKS_STACK_ID)
+                    responseData['bastion_instance_id'] = extract_bastion_instance_id(BASTION_ASG_NAME)
+                    print(responseData)
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+                logging.error('Exception: %s' % e, exc_info=True)
+                status = cfnresponse.FAILED
+                cfnresponse.send(event, context, status, {}, None)
+      Handler: "index.handler"
+      Runtime: "python3.6"
+      Timeout: "5"
+      Role: !GetAtt DescribeStackRole.Arn
+
+  GetStackResources:
+    Type: "Custom::GetStackResources"
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt DescribeStackResourcesLambda.Arn
+      EKSStack: !Ref 'EKSStack'
+      BastionASGName: !Ref BastionASGName
+
+  ModifyEfsMountSGRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "lambda_policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:DescribeNetworkInterfaceAttribute"
+                  - "ec2:ModifyNetworkInterfaceAttribute"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "elasticfilesystem:DescribeMountTargets"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
+                  - "elasticfilesystem:ModifyMountTargetSecurityGroups"
+                Resource: !Sub "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${GetStackResources.efs_fs_id}"
+
+  ModifyEFSMountSGLambda:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import logging
+          import json
+          import cfnresponse
+
+          def modify_efs_mount(fs_id, bastion_sg):
+              try:
+                  efs_client = boto3.client('efs')
+                  efs_mnt_targets = efs_client.describe_mount_targets(
+                      FileSystemId=fs_id
+                  )
+
+                  for mt in efs_mnt_targets['MountTargets']:
+                      mt_sg_desc = efs_client.describe_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId']
+                      )
+                      mt_sg = mt_sg_desc['SecurityGroups']
+                      mt_sg.append(bastion_sg)
+
+                      efs_client.modify_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId'],
+                          SecurityGroups=mt_sg
+                      )
+
+                  for mt in efs_mnt_targets['MountTargets']:
+                      mt_sg_desc = efs_client.describe_mount_target_security_groups(
+                          MountTargetId=mt['MountTargetId']
+                      )
+                      mt_sg = mt_sg_desc['SecurityGroups']
+                      print(mt_sg)
+
+                  return "SUCCESS"
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def handler(event, context):
+            print('Received event: %s' % json.dumps(event))
+            status = cfnresponse.SUCCESS
+            try:
+                if event['RequestType'] == 'Delete':
+                    cfnresponse.send(event, context, status, {})
+                else:
+                    fs_id = event['ResourceProperties']['FSID']
+                    bastion_sg = event['ResourceProperties']['BastionSG']
+                    responseData = {}
+                    responseData['status'] = modify_efs_mount(fs_id, bastion_sg)
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+                logging.error('Exception: %s' % e, exc_info=True)
+                status = cfnresponse.FAILED
+                cfnresponse.send(event, context, status, {}, None)
+      Handler: "index.handler"
+      Runtime: "python3.6"
+      Timeout: "5"
+      Role: !GetAtt ModifyEfsMountSGRole.Arn
+
+  ModifyEFSMountSG:
+    Type: "Custom::ModifyEFSMountSG"
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt ModifyEFSMountSGLambda.Arn
+      FSID: !GetAtt GetStackResources.efs_fs_id
+      BastionSG: !Ref BastionSecurityGroup
+
+  FNCMSSMSendCommandPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - 'ssm:SendCommand'
+            Effect: Allow
+            Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${GetStackResources.bastion_instance_id}"
+
+  FNCMSSMSendCommandLambdaRole:
+    DependsOn:
+      - FNCMSSMSendCommandPolicy
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess'
+        - !Ref FNCMSSMSendCommandPolicy
+Outputs:
+  FNCMSSMSendCommandLambdaRoleArn:
+    Value: !GetAtt FNCMSSMSendCommandLambdaRole.Arn
