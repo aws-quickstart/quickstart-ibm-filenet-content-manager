@@ -365,8 +365,8 @@ Parameters:
     Description: Copy/paste the IBM entitlement key here for Quick Start to pull FileNet Content Manager docker images from IBM Entitlement Registry.  To obtain Entitlement Key, go here https://myibm.ibm.com/products-services/containerlibrary
 # Oracle RDS Database Parameters
   ORAFilesLocation:
-    Description: Provide the S3 location of the downloaded Oracle client files.
-        E.g., s3://ibm-fncm-assets/oracle_client_files
+    Description: Provide the S3 location of the downloaded Oracle client files (Please do not include the s3:// and the trailing forward slash)
+        E.g., If the location is "s3://ibm-fncm-assets/oracle_client_files" then enter "ibm-fncm-assets/oracle_client_files"
         Refer to the deployment guide for more information on downloading the client files and obtaining the location
     Type: String
   ORAVersion:
@@ -597,15 +597,10 @@ Resources:
       Parameters:
         VPCCIDR: !Ref VPCCIDR
         BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
-        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
-        EKSStack: !Ref EKSStack
-  FNCMStringFuctionstack:
-    DependsOn: FNCMSGStack
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-stringfunctions.yaml'
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'        
+        EKSStack: !Ref EKSStack        
   FNCMECRStack:
-    DependsOn: FNCMStringFuctionstack
+    DependsOn: FNCMSGStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-ecr.yaml'
@@ -621,10 +616,13 @@ Resources:
       Parameters:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
-        CPERepoARN: !GetAtt 'FNCMECRStack.Outputs.CPEArn'
+        CPERepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CPEArn']]
+        CSSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CSSArn']]
+        ICNRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.ICNArn']]
+        CRSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CRSArn']]
+        CMISRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CMISArn']]
         ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
-        LowerCaseStackName: !GetAtt 'FNCMECRStack.Outputs.LowerCaseStackName'
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the Oracle Master Database
@@ -706,7 +704,7 @@ Resources:
         DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
-        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn        
   # Create the Oracle tablespaces and users for FNCM
   RDSObjectCreation:
     DependsOn: RDSStack

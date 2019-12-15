@@ -91,7 +91,7 @@ Parameters:
     Type: String
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
-    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.    
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup

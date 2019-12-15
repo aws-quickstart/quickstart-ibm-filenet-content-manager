@@ -42,7 +42,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:getObject
-                Resource: !Sub 'arn:aws:s3:::ibm-fncm-assets/*'
+                Resource: !Sub 'arn:aws:s3:::ibm-fncm-assets/*'                
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream

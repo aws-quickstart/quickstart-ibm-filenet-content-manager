@@ -7,9 +7,21 @@ Parameters:
   DockerRegistryEntitlementKey:
     Description: Paste the Entitlement Key here for Quick Start to pull docker images
     Type: String    
-  CPERepoARN:
-    Description: CPE docker repo from ECR
+  CPERepoName:
     Type: String
+    Description: Randomly generated CPE docker repo name from ECR
+  ICNRepoName:
+    Type: String
+    Description: Randomly generated ICN docker repo name from ECR
+  CSSRepoName:
+    Type: String
+    Description: Randomly generated CSS docker repo name from ECR
+  CRSRepoName:
+    Type: String
+    Description: Randomly generated CRS docker repo name from ECR
+  CMISRepoName:
+    Type: String
+    Description: Randomly generated CMIS docker repo name from ECR
   ECRRegion:
     Description: Region where ECR is located
     Type: String
@@ -19,12 +31,10 @@ Parameters:
   FinalLogin:
     Type: String
     Description: Final Login string
-  LowerCaseStackName:
-    Type: String
-    Description: The name of the stack in lower case
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+
 Resources:
   LoginPullPushContainers:
     Type: 'AWS::SSM::Document'
@@ -57,8 +67,8 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref LowerCaseStackName
-                - '-cpe:ga-553-p8cpe-if001'
+                - !Ref CPERepoName
+                - ':ga-553-p8cpe-if001'
             type: String
           ICNRepoURI:
             default: !Join
@@ -67,18 +77,8 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref LowerCaseStackName                
-                - '-navigator:ga-306-icn-if002'
-            type: String                
-          CMISRepoURI:
-            default: !Join
-              - ''
-              - - !Ref ECROrg
-                - '.dkr.ecr.'
-                - !Ref ECRRegion
-                - '.amazonaws.com/'
-                - !Ref LowerCaseStackName                
-                - '-cmis:ga-304-cmis-if008'
+                - !Ref ICNRepoName                
+                - ':ga-306-icn-if002'
             type: String                
           CSSRepoURI:
             default: !Join
@@ -87,8 +87,8 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref LowerCaseStackName                
-                - '-css:ga-553-p8css-if001'
+                - !Ref CSSRepoName                
+                - ':ga-553-p8css-if001'
             type: String                
           CRSRepoURI:
             default: !Join
@@ -97,8 +97,18 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref LowerCaseStackName                
-                - '-crs:ga-553-p8cgql-if001'
+                - !Ref CRSRepoName                
+                - ':ga-553-p8cgql-if001'
+            type: String                
+          CMISRepoURI:
+            default: !Join
+              - ''
+              - - !Ref ECROrg
+                - '.dkr.ecr.'
+                - !Ref ECRRegion
+                - '.amazonaws.com/'
+                - !Ref CMISRepoName                
+                - ':ga-304-cmis-if008'
             type: String                
         mainSteps:
           - action: 'aws:runShellScript'
@@ -211,15 +221,6 @@ Resources:
                     - '> /root/docker_login.out'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
-            name: PushCSSContainer
-            inputs:
-              runCommand:
-                - !Join
-                  - ' '
-                  - - '"/usr/bin/docker"'
-                    - 'push {{CSSRepoURI}}'
-              workingDirectory: '/home/ec2-user'            
-          - action: 'aws:runShellScript'
             name: PushCPEContainer
             inputs:
               runCommand:
@@ -228,6 +229,15 @@ Resources:
                   - - '"/usr/bin/docker"'
                     - 'push {{CPERepoURI}}'
               workingDirectory: '/home/ec2-user'              
+          - action: 'aws:runShellScript'
+            name: PushCSSContainer
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/usr/bin/docker"'
+                    - 'push {{CSSRepoURI}}'
+              workingDirectory: '/home/ec2-user'            
           - action: 'aws:runShellScript'
             name: PushICNContainer
             inputs:
@@ -327,8 +337,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref LowerCaseStackName
-        - '-cpe:ga-553-p8cpe-if001'
+        - !Ref CPERepoName
+        - ':ga-553-p8cpe-if001'
   ICNRepoURI:
     Value: !Join
       - ''
@@ -336,8 +346,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref LowerCaseStackName        
-        - '-navigator:ga-306-icn-if002'
+        - !Ref ICNRepoName
+        - ':ga-306-icn-if002'
   CMISRepoURI:
     Value: !Join
       - ''
@@ -345,8 +355,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref LowerCaseStackName        
-        - '-cmis:ga-304-cmis-if008'
+        - !Ref CMISRepoName        
+        - ':ga-304-cmis-if008'
   CSSRepoURI:
     Value: !Join
       - ''
@@ -354,8 +364,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref LowerCaseStackName        
-        - '-css:ga-553-p8css-if001'
+        - !Ref CSSRepoName        
+        - ':ga-553-p8css-if001'
   CRSRepoURI:
     Value: !Join
       - ''
@@ -363,5 +373,5 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref LowerCaseStackName        
-        - '-crs:ga-553-p8cgql-if001'
+        - !Ref CRSRepoName        
+        - ':ga-553-p8cgql-if001'
