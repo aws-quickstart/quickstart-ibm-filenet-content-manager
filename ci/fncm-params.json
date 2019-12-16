@@ -1,74 +1,10 @@
 [
     {
-        "ParameterKey": "LambdaZipsBucketName",
-        "ParameterValue": ""
-    },
-    {
-        "ParameterKey": "PublicSubnet3CIDR",
-        "ParameterValue": "10.0.160.0/20"
-    },
-    {
-        "ParameterKey": "DomainDNSName",
-        "ParameterValue": "example.com"
-    },
-    {
-        "ParameterKey": "ADServer2InstanceType",
-        "ParameterValue": "m5.xlarge"
-    },
-    {
-        "ParameterKey": "PrivateSubnet2CIDR",
-        "ParameterValue": "10.0.32.0/19"
-    },
-    {
-        "ParameterKey": "ADServer1InstanceType",
-        "ParameterValue": "m5.xlarge"
-    },
-    {
         "ParameterKey": "ORAFilesLocation",
-        "ParameterValue": "cftests"
-    },
-    {
-        "ParameterKey": "NumberOfNodes",
-        "ParameterValue": "3"
-    },
-    {
-        "ParameterKey": "ADServer1NetBIOSName",
-        "ParameterValue": "DC1"
-    },
-    {
-        "ParameterKey": "QSS3KeyPrefix",
-        "ParameterValue": "quickstart-ibm-filenet-content-manager/"
-    },
-    {
-        "ParameterKey": "NodeInstanceType",
-        "ParameterValue": "t2.xlarge"
+        "ParameterValue": "override"
     },
     {
         "ParameterKey": "RDGWCIDR",
-        "ParameterValue": "10.0.0.0/16"
-    },
-    {
-        "ParameterKey": "ORAVersion",
-        "ParameterValue": "12.2"
-    },
-    {
-        "ParameterKey": "DBMultiZone",
-        "ParameterValue": "true"
-    },
-    {
-        "ParameterKey": "ADServer1PrivateIP",
-        "ParameterValue": "10.0.0.10"
-    },
-    {
-        "ParameterKey": "ADServer2NetBIOSName",
-        "ParameterValue": "DC2"
-    },
-    {
-        "ParameterKey": "PrivateSubnet3CIDR",
-        "ParameterValue": "10.0.64.0/19"
-    },
-    {
-        "ParameterKey": "VPCCIDR",
         "ParameterValue": "10.0.0.0/16"
     },
     {
@@ -76,96 +12,28 @@
         "ParameterValue": "override"
     },
     {
-        "ParameterKey": "PublicSubnet1CIDR",
-        "ParameterValue": "10.0.128.0/20"
-    },
-    {
         "ParameterKey": "DomainAdminPassword",
-        "ParameterValue": "****"
-    },
-    {
-        "ParameterKey": "DomainAdminUser",
-        "ParameterValue": "Admin"
-    },
-    {
-        "ParameterKey": "KubernetesVersion",
-        "ParameterValue": "1.14"
+        "ParameterValue": "$[taskcat_genpass_12A]"
     },
     {
         "ParameterKey": "KeyPairName",
-        "ParameterValue": "cikey"
+        "ParameterValue": "override"
     },
     {
         "ParameterKey": "QSS3BucketName",
-        "ParameterValue": "tcat-quickstart-ibm-filenetiwyoge10"
-    },
-    {
-        "ParameterKey": "NodeGroupName",
-        "ParameterValue": "Default"
-    },
-    {
-        "ParameterKey": "DBInstanceClass",
-        "ParameterValue": "db.m5.large"
-    },
-    {
-        "ParameterKey": "DomainNetBIOSName",
-        "ParameterValue": "example"
+        "ParameterValue": "$[taskcat_autobucket]"
     },
     {
         "ParameterKey": "AvailabilityZones",
-        "ParameterValue": "us-east-2a,us-east-2b,us-east-2c"
+        "ParameterValue": "$[taskcat_genaz_3]"
     },
     {
         "ParameterKey": "RemoteAccessCIDR",
         "ParameterValue": "10.0.0.0/16"
     },
     {
-        "ParameterKey": "AdditionalEKSAdminArns",
-        "ParameterValue": ""
-    },
-    {
-        "ParameterKey": "ADServer2PrivateIP",
-        "ParameterValue": "10.0.32.10"
-    },
-    {
-        "ParameterKey": "DBInstanceIdentifier",
-        "ParameterValue": "FNCMORCL"
-    },
-    {
-        "ParameterKey": "RDGWInstanceType",
-        "ParameterValue": "t2.large"
-    },
-    {
-        "ParameterKey": "PrivateSubnet1CIDR",
-        "ParameterValue": "10.0.0.0/19"
-    },
-    {
-        "ParameterKey": "NumberOfRDGWHosts",
-        "ParameterValue": "1"
-    },
-    {
-        "ParameterKey": "PublicSubnet2CIDR",
-        "ParameterValue": "10.0.144.0/20"
-    },
-    {
         "ParameterKey": "DBPassword",
-        "ParameterValue": "****"
-    },
-    {
-        "ParameterKey": "NodeVolumeSize",
-        "ParameterValue": "20"
-    },
-    {
-        "ParameterKey": "DBName",
-        "ParameterValue": "P8DB"
-    },
-    {
-        "ParameterKey": "DBUser",
-        "ParameterValue": "P8Admin"
-    },
-    {
-        "ParameterKey": "FNCMVersion",
-        "ParameterValue": "FileNet Content Manager 5.5.3"
+        "ParameterValue": "$[taskcat_genpass_8A]"
     },
     {
         "ParameterKey": "SSLCertARN",
