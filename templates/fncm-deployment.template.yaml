@@ -609,13 +609,27 @@ Resources:
                     - '/home/ec2-user/dbamc_create_pvs.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
+            name: downloadCopyFilesScript
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_copy_config_files.sh'
+                    - '/home/ec2-user/FNCM_copy_config_files.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
             name: setDBAMCFilePermissions
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"chmod"'
-                    - '755 /home/ec2-user/dbamc_create_pvs.sh'
+                    - '755 /home/ec2-user/*.sh'
+                    - ';'
+                    - '"chown"'
+                    - '-R ec2-user:ec2-user /home/ec2-user'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runCreatePVsScript
@@ -637,40 +651,12 @@ Resources:
                     - '/home/ec2-user/cssSelfsignedServerStore'                    
               workingDirectory: '/home/ec2-user'              
           - action: 'aws:runShellScript'
-            name: copyConfigurationXMLFiles
+            name: copyConfigurationFiles
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"cp"'
-                    - '/home/ec2-user/GCD.xml /data/ecm/cpe/cfgstore/GCD.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OS1.xml /data/ecm/cpe/cfgstore/OS1.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ldap.xml /data/ecm/cpe/cfgstore/ldap.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/cpe/cfgstore/OraJDBCDriver.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/icn/cfgstore/OraJDBCDriver.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ICNDS.xml /data/ecm/icn/cfgstore/ICNDS.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ldap.xml /data/ecm/icn/cfgstore/ldap.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ojdbc8.jar /data/ecm/cpe/cfgstore/ojdbc8.jar'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ojdbc8.jar /data/ecm/icn/cfgstore/ojdbc8.jar'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/cssSelfsignedServerStore /data/ecm/css/cfgstore/cssSelfsignedServerStore'
+                  - - '"/home/ec2-user/FNCM_copy_config_files.sh"'
               workingDirectory: '/home/ec2-user'              
           - action: 'aws:runShellScript'
             name: setPVPermissionsAndOwnership
