@@ -38,6 +38,9 @@ Parameters:
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+  RemoteAccessCIDR:
+    Description: The CIDR IP range that is permitted to access the load balancers.
+    Type: String
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -176,9 +179,9 @@ Resources:
                 - args:
                   - --ingress-class=alb
                   - --cluster-name=${EKSClusterName}
-                  image: 894847497797.dkr.ecr.us-west-2.amazonaws.com/aws-alb-ingress-controller:v1.0.0
+                  image: docker.io/amazon/aws-alb-ingress-controller:v1.1.4
                   imagePullPolicy: Always
-                  name: server
+                  name: alb-ingress-controller
                   resources: {}
                   terminationMessagePath: /dev/termination-log
               dnsPolicy: ClusterFirst
@@ -1332,6 +1335,9 @@ Resources:
             Action: 'elasticloadbalancing:DescribeListeners'
             Resource: '*'
           - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeListenerCertificates'
+            Resource: '*'
+          - Effect: Allow
             Action: 'elasticloadbalancing:DescribeLoadBalancers'
             Resource: '*'
           - Effect: Allow
@@ -1440,6 +1446,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
           labels:
             app: cpe-ingress
         spec:
@@ -1473,6 +1480,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
           labels:
             app: icn-ingress
         spec:
