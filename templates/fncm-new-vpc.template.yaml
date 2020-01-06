@@ -764,6 +764,7 @@ Resources:
         SSLCertARN: !Ref SSLCertARN
         NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
