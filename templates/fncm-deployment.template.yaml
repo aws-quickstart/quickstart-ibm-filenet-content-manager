@@ -33,11 +33,14 @@ Parameters:
     Type: String
   SSLCertARN:
     Type: String
-  NodeInstanceRoleName: 
+  NodeInstanceRoleName:
     Type: String
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+  RemoteAccessCIDR:
+    Description: The CIDR IP range that is permitted to access the load balancers.
+    Type: String    
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -77,7 +80,7 @@ Resources:
       Manifest:
         kind: ClusterRole
         apiVersion: rbac.authorization.k8s.io/v1
-        metadata:        
+        metadata:
           name: alb-ingress-controller
           labels:
             app: alb-ingress-controller
@@ -134,7 +137,7 @@ Resources:
           labels:
             app: alb-ingress-controller
           name: alb-ingress
-          namespace: kube-system     
+          namespace: kube-system
   ALBIngressControllerDeploymentStack:
     DependsOn: CreateServiceAccountALBIngressController
     Type: "Custom::KubeManifest"
@@ -147,7 +150,7 @@ Resources:
       # context for KMS to use when decrypting the file
       KubeConfigKmsContext: !Ref KubeConfigKmsContext
       # Cluster name
-      EKSClusterName: !Ref EKSClusterName      
+      EKSClusterName: !Ref EKSClusterName
       # Kubernetes manifest
       Manifest: !Sub |
         apiVersion: apps/v1
@@ -176,15 +179,15 @@ Resources:
                 - args:
                   - --ingress-class=alb
                   - --cluster-name=${EKSClusterName}
-                  image: 894847497797.dkr.ecr.us-west-2.amazonaws.com/aws-alb-ingress-controller:v1.0.0
+                  image: docker.io/amazon/aws-alb-ingress-controller:v1.1.4
                   imagePullPolicy: Always
-                  name: server
+                  name: alb-ingress-controller
                   resources: {}
                   terminationMessagePath: /dev/termination-log
               dnsPolicy: ClusterFirst
               restartPolicy: Always
               securityContext: {}
-              terminationGracePeriodSeconds: 30
+              terminationGracePeriodSeconds: 30                  
               serviceAccountName: alb-ingress
               serviceAccount: alb-ingress
 #########################
@@ -339,7 +342,7 @@ Resources:
               storage: 10Gi
 #########################
 # Creating PVCs for CSS #
-#########################              
+#########################
   fncmCreateCSSCfgStorePVC:
     DependsOn: fncmCreateNamespace
     Type: "Custom::KubeManifest"
@@ -574,7 +577,7 @@ Resources:
           resources:
             requests:
               storage: 10Gi
-  #########################################################################################################################  
+  #########################################################################################################################
   ## 1. Download XML configuration files from S3
   ## 2. Download database drivers from S3
   ## 3. Download and execute shell script to (a) mount the PVs (b) copy XML and DB2 files to the appropriate directories
@@ -599,6 +602,8 @@ Resources:
         mainSteps:
           - action: 'aws:runShellScript'
             name: downloadDBAMCCreatePVScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -609,24 +614,46 @@ Resources:
                     - '/home/ec2-user/dbamc_create_pvs.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
+            name: downloadCopyFilesScript
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://ibm-fncm-assets/scripts/FNCM_copy_config_files.sh'
+                    - '/home/ec2-user/FNCM_copy_config_files.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
             name: setDBAMCFilePermissions
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"chmod"'
-                    - '755 /home/ec2-user/dbamc_create_pvs.sh'
+                    - '755 /home/ec2-user/*.sh'
+                    - ';'
+                    - '"chown"'
+                    - '-R ec2-user:ec2-user /home/ec2-user'                                        
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runCreatePVsScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/home/ec2-user/dbamc_create_pvs.sh"'
-              workingDirectory: '/home/ec2-user'              
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadcssSelfSignedServerStore
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -634,46 +661,22 @@ Resources:
                   - - '"aws"'
                     - 's3 cp'
                     - 's3://ibm-fncm-assets/scripts/cssSelfsignedServerStore'
-                    - '/home/ec2-user/cssSelfsignedServerStore'                    
-              workingDirectory: '/home/ec2-user'              
+                    - '/home/ec2-user/cssSelfsignedServerStore'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
-            name: copyConfigurationXMLFiles
+            name: copyConfigurationFiles
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
-                  - - '"cp"'
-                    - '/home/ec2-user/GCD.xml /data/ecm/cpe/cfgstore/GCD.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OS1.xml /data/ecm/cpe/cfgstore/OS1.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ldap.xml /data/ecm/cpe/cfgstore/ldap.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/cpe/cfgstore/OraJDBCDriver.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/OraJDBCDriver.xml /data/ecm/icn/cfgstore/OraJDBCDriver.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ICNDS.xml /data/ecm/icn/cfgstore/ICNDS.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ldap.xml /data/ecm/icn/cfgstore/ldap.xml'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ojdbc8.jar /data/ecm/cpe/cfgstore/ojdbc8.jar'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/ojdbc8.jar /data/ecm/icn/cfgstore/ojdbc8.jar'
-                    - ';'
-                    - '"cp"'
-                    - '/home/ec2-user/cssSelfsignedServerStore /data/ecm/css/cfgstore/cssSelfsignedServerStore'
-              workingDirectory: '/home/ec2-user'              
+                  - - '"/home/ec2-user/FNCM_copy_config_files.sh"'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setPVPermissionsAndOwnership
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -683,7 +686,7 @@ Resources:
                     - ';'
                     - '"chmod"'
                     - '-R 775 /data'
-              workingDirectory: '/home/ec2-user'       
+              workingDirectory: '/home/ec2-user'
   fncmExecuteMountPVandConfigDocumentLambda1:
     Type: 'AWS::Lambda::Function'
     DependsOn:
@@ -781,7 +784,7 @@ Resources:
               protocol: TCP
               port: 9443
               targetPort: 9443
-              # Statically defined nodePort so we know which port to create the ALB with              
+              # Statically defined nodePort so we know which port to create the ALB with
               nodePort: 31002
           selector:
               app: ibm-dba-contentservices
@@ -843,13 +846,13 @@ Resources:
               protocol: TCP
               port: 9080
               targetPort: 9080
-              # Statically defined nodePort so we know which port to create the ALB with              
+              # Statically defined nodePort so we know which port to create the ALB with
               nodePort: 31003
             - name: https
               protocol: TCP
               port: 9443
               targetPort: 9443
-              # Statically defined nodePort so we know which port to create the ALB with              
+              # Statically defined nodePort so we know which port to create the ALB with
               nodePort: 31004
           selector:
               app: ibm-dba-navigator
@@ -974,25 +977,25 @@ Resources:
                     mountPath: /opt/ibm/asa
               volumes:
                   - name: cpecfgstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-cfgstore-pvc
                   - name: cpelogstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-logstore-pvc
                   - name: cpeicmrulesstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-icmrulesstore-pvc
                   - name: cpefnlogstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-fnlogstore-pvc
                   - name: cpebootstrapstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-bootstrapstore-pvc
                   - name: cpetextextstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-textextstore-pvc
                   - name: cpefilestore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: cpe-filestore-pvc
   # Deploy CSS container #
   fncmCSSDeploymentStack:
@@ -1235,22 +1238,22 @@ Resources:
                     mountPath: /opt/ibm/Aspera
               volumes:
                   - name: icncfgstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-cfgstore-pvc
                   - name: icnlogstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-logstore-pvc
                   - name: icnpluginstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-pluginstore-pvc
                   - name: icnvwcachestore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-vw-cachestore-pvc
                   - name: icnvwlogstore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-vw-logstore-pvc
                   - name: icnasperastore
-                    persistentVolumeClaim: 
+                    persistentVolumeClaim:
                       claimName: icn-asperastore-pvc
   # Creating Ingress Controller Policy
   CreateIngressControllerPolicy:
@@ -1344,6 +1347,9 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:DescribeListeners'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeListenerCertificates'
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:DescribeLoadBalancers'
@@ -1454,6 +1460,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
           labels:
             app: cpe-ingress
         spec:
@@ -1466,7 +1473,7 @@ Resources:
                       servicePort: 9080
   CreateICNLoadBalancer:
     Type: "Custom::KubeManifest"
-    DependsOn: fncmICNDeploymentStack    
+    DependsOn: fncmICNDeploymentStack
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
@@ -1487,6 +1494,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
           labels:
             app: icn-ingress
         spec:
