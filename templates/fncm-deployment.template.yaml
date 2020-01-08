@@ -208,7 +208,7 @@ Resources:
           name: 'cpe-bootstrapstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -229,7 +229,7 @@ Resources:
           name: 'cpe-cfgstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -250,7 +250,7 @@ Resources:
           name: 'cpe-filestore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -271,7 +271,7 @@ Resources:
           name: 'cpe-fnlogstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -292,7 +292,7 @@ Resources:
           name: 'cpe-icmrulesstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -313,7 +313,7 @@ Resources:
           name: 'cpe-logstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -334,7 +334,7 @@ Resources:
           name: 'cpe-textextstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -358,7 +358,7 @@ Resources:
           name: 'csscfgstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -379,7 +379,7 @@ Resources:
           name: 'csslogstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -400,7 +400,7 @@ Resources:
           name: 'csstempstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -421,7 +421,7 @@ Resources:
           name: 'cssindexstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -442,7 +442,7 @@ Resources:
           name: 'csscustomstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -466,7 +466,7 @@ Resources:
           name: 'icn-asperastore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -487,7 +487,7 @@ Resources:
           name: 'icn-cfgstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -508,7 +508,7 @@ Resources:
           name: 'icn-logstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -529,7 +529,7 @@ Resources:
           name: 'icn-pluginstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -550,7 +550,7 @@ Resources:
           name: 'icn-vw-cachestore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
@@ -571,7 +571,7 @@ Resources:
           name: 'icn-vw-logstore-pvc'
           namespace: !GetAtt fncmCreateNamespace.name
         spec:
-          storageClassName: efs
+          storageClassName: aws-efs
           accessModes:
             - ReadWriteOnce
           resources:
