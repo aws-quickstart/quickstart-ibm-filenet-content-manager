@@ -685,7 +685,7 @@ Resources:
         PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
         PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
         QSS3BucketName: !Ref 'QSS3BucketName'
-        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/"
+        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}"
         RDGWInstanceType: !Ref 'RDGWInstanceType'
         RDGWCIDR: !Ref 'RDGWCIDR'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
