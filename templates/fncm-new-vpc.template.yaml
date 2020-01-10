@@ -598,8 +598,8 @@ Resources:
       Parameters:
         VPCCIDR: !Ref VPCCIDR
         BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
-        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'        
-        EKSStack: !Ref EKSStack        
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        EKSStack: !Ref EKSStack
   FNCMECRStack:
     DependsOn: FNCMSGStack
     Type: AWS::CloudFormation::Stack
@@ -641,8 +641,8 @@ Resources:
         DBPassword: !Ref 'DBPassword'
         DBMultiZone: !Ref 'DBMultiZone'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
-        PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
-        PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
+        PrivateSubnet1AID: !GetAtt 'VPCStack.Outputs.PrivateSubnet1AID'
+        PrivateSubnet2AID: !GetAtt 'VPCStack.Outputs.PrivateSubnet2AID'
         BastionSecurityGroupID: !GetAtt 'EKSStack.Outputs.BastionSecurityGroup'
         NodeSecurityGroupID: !GetAtt 'EKSStack.Outputs.NodeGroupSecurityGroup'
         ControlPlaneSecurityGroupID: !GetAtt 'EKSStack.Outputs.ControlPlaneSecurityGroup'
@@ -705,7 +705,7 @@ Resources:
         DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
-        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn        
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the Oracle tablespaces and users for FNCM
   RDSObjectCreation:
     DependsOn: RDSStack
