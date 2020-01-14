@@ -78,7 +78,7 @@ Metadata:
       AvailabilityZones:
         default: Availability Zones
       KeyPairName:
-        default: SSH key name
+        default: Key pair name
       SSLCertARN:
         default: SSL/TLS certificate ARN
       PrivateSubnet1CIDR:
@@ -103,6 +103,8 @@ Metadata:
         default: Additional EKS admin ARNs
       KubernetesVersion:
         default: Kubernetes version
+      LambdaZipsBucketName:
+        default: Lambda zips bucket name
       VPCCIDR:
         default: VPC CIDR
       NodeInstanceType:
