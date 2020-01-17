@@ -15,7 +15,7 @@ This Quick Start sets up the following:
   - A Linux bastion host in an Auto Scaling group to allow inbound Secure Shell (SSH) access to EC2 instances in public and private subnets.
   - A remote desktop gateway host in an Auto Scaling group to provide secure remote access to instances in the private subnets.
 - In the private subnets:
-  - AWS Directory Service for Microsoft Active Directory, deployed in two availability zones and two private subnets, for redundancy. The Active Directory service provides Lightweight Directory Access Protocol (LDAP) services for components of the FileNet Content Manager.
+  - Active Directory domain controllers for Microsoft Active Directory deployed in two Availability Zones/private subnets for redundancy. The Active Directory service is used to provide Lightweight Directory Access Protocol (LDAP) services for the FileNet Content Manager components.
   - Oracle Database on an Amazon Relational Database Service (Amazon RDS) in a Multi-AZ configuration with asynchronous data replication among Availability Zones.FileNet Content Manager containers in an Amazon EKS cluster.
   - Amazon EFS, used as the underlying network file system, for configuration and content storage.
 
