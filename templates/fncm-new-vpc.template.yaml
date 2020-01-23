@@ -611,6 +611,17 @@ Resources:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
         BastionHostRole: !GetAtt FNCMIAMStack.Outputs.BastionRole
+  FNCMCleanupECRStack:
+    DependsOn: FNCMECRStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/cleanup-ecr.yaml'
+      Parameters:
+        CPERepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CPEArn']]
+        CSSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CSSArn']]
+        ICNRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.ICNArn']]
+        CRSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CRSArn']]
+        CMISRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CMISArn']]
   FNCMDockerRegistryStack:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
