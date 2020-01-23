@@ -1298,6 +1298,9 @@ Resources:
             Action: 'ec2:DescribeInstanceStatus'
             Resource: '*'
           - Effect: Allow
+            Action: 'ec2:DescribeInternetGateways'
+            Resource: '*'
+          - Effect: Allow
             Action: 'ec2:DescribeSecurityGroups'
             Resource: '*'
           - Effect: Allow
@@ -1310,6 +1313,12 @@ Resources:
             Action: 'ec2:DescribeVpcs'
             Resource: '*'
           - Effect: Allow
+            Action: 'ec2:DescribeClassicLinkInstances'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ec2:DescribeVpcClassicLink'
+            Resource: '*'                        
+          - Effect: Allow
             Action: 'ec2:ModifyInstanceAttribute'
             Resource: '*'
           - Effect: Allow
@@ -1320,6 +1329,12 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:AddTags'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:ApplySecurityGroupsToLoadBalancer'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:AttachLoadBalancerToSubnets'
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:CreateListener'
@@ -1346,10 +1361,16 @@ Resources:
             Action: 'elasticloadbalancing:DeleteTargetGroup'
             Resource: '*'
           - Effect: Allow
+            Action: 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+            Resource: '*'
+          - Effect: Allow
             Action: 'elasticloadbalancing:DeregisterTargets'
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:DescribeListeners'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:DescribeInstanceHealth'
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:DescribeListenerCertificates'
@@ -1379,6 +1400,12 @@ Resources:
             Action: 'elasticloadbalancing:DescribeTargetHealth'
             Resource: '*'
           - Effect: Allow
+            Action: 'elasticloadbalancing:DisableAvailabilityZonesForLoadBalancer'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:EnableAvailabilityZonesForLoadBalancer'
+            Resource: '*'            
+          - Effect: Allow
             Action: 'elasticloadbalancing:ModifyListener'
             Resource: '*'
           - Effect: Allow
@@ -1392,6 +1419,9 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:ModifyTargetGroupAttributes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:RegisterTargets'
@@ -1410,6 +1440,9 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:SetWebACL'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
             Resource: '*'
           - Effect: Allow
             Action: 'iam:GetServerCertificate'
