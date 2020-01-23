@@ -1292,6 +1292,9 @@ Resources:
             Action: 'ec2:DescribeInstances'
             Resource: '*'
           - Effect: Allow
+            Action: 'ec2:DescribeAccountAttributes'
+            Resource: '*'
+          - Effect: Allow
             Action: 'ec2:DescribeInstanceStatus'
             Resource: '*'
           - Effect: Allow
