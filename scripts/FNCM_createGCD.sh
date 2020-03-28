@@ -23,7 +23,7 @@ PodName=$(runuser -l ec2-user -c "kubectl get pods | grep cpe")
 CPE_PodName=$(echo $PodName | awk '{print $1}')
 CPE_LogLocation="/data/ecm/cpe/logstore/$CPE_PodName"
 
-# Set timeout values in minutes
+# Set timeout iterations in 30s intervals
 TIME_OUT=30
 
 # Upgrade to Java 8
@@ -47,7 +47,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE Library archive was not downloaded successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Set Java classpath to include required jar files
@@ -83,5 +83,5 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE has not started successfully. Exiting..."
-        exit
+        exit 1
 fi
