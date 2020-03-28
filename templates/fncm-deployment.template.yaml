@@ -1,5 +1,60 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Deploys FileNet Content Manager (FNCM+BAN) into an existing Kubernetes Cluster (qs-1pb1dqsjr)
+Description: Deploys FileNet Content Manager (FNCM+BAN) into an existing Kubernetes Cluster
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Kubernetes parameters
+      Parameters:
+      - KubeManifestLambdaArn
+      - KubeConfigPath
+      - KubeConfigKmsContext
+      - BastionASGName
+      - CPERepoURI
+      - ICNRepoURI
+      - CMISRepoURI
+      - CSSRepoURI
+      - CRSRepoURI
+      - EKSClusterName
+      - QSS3BucketName
+      - QSS3KeyPrefix
+      - SSLCertARN
+      - NodeInstanceRoleName
+      - FNCMSSMSendCommandLambdaRoleARN
+      - RemoteAccessCIDR
+    ParameterLabels:
+      KubeManifestLambdaArn:
+        default: Kube Manifest Lambda Arn
+      KubeConfigPath:
+        default: Kube Config Path
+      KubeConfigKmsContext:
+        default: Kube Config Kms Context
+      CPERepoURI:
+        default: CMIS Repo URI
+      ICNRepoURI:
+        default: CMIS Repo URI
+      CMISRepoURI:
+        default: CMIS Repo URI
+      CSSRepoURI:
+        default: CMIS Repo URI
+      CRSRepoURI:
+        default: CMIS Repo URI
+      EKSClusterName:
+        default: EKS Cluster Name        
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      SSLCertARN:
+        default: SSL/TLS certificate ARN
+      FNCMSSMSendCommandLambdaRoleARN:
+        default: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+      NodeInstanceRoleName:
+        default: Node instance role name.
+      BastionASGName:
+        default: Auto Scaling Group Name of the Bastion Host
+      RemoteAccessCIDR:
+        default: CIDR IP range that is permitted to access the load balancers
 Parameters:
   KubeManifestLambdaArn:
     Type: String
@@ -40,7 +95,7 @@ Parameters:
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
-    Type: String    
+    Type: String
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -187,7 +242,7 @@ Resources:
               dnsPolicy: ClusterFirst
               restartPolicy: Always
               securityContext: {}
-              terminationGracePeriodSeconds: 30                  
+              terminationGracePeriodSeconds: 30
               serviceAccountName: alb-ingress
               serviceAccount: alb-ingress
 #########################
@@ -610,7 +665,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/dbamc_create_pvs.sh'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/dbamc_create_pvs.sh'
                     - '/home/ec2-user/dbamc_create_pvs.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
@@ -623,7 +678,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_copy_config_files.sh'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_copy_config_files.sh'
                     - '/home/ec2-user/FNCM_copy_config_files.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
@@ -638,7 +693,7 @@ Resources:
                     - '755 /home/ec2-user/*.sh'
                     - ';'
                     - '"chown"'
-                    - '-R ec2-user:ec2-user /home/ec2-user'                                        
+                    - '-R ec2-user:ec2-user /home/ec2-user'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runCreatePVsScript
@@ -660,7 +715,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/cssSelfsignedServerStore'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/cssSelfsignedServerStore'
                     - '/home/ec2-user/cssSelfsignedServerStore'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
@@ -1089,15 +1144,15 @@ Resources:
                     value: 'Etc/UTC'
                 volumeMounts:
                   - name: csscfgstore
-                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/data"
+                    mountPath: /opt/IBM/ContentSearchServices/CSS_Server/data
                   - name: csslogstore
-                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/log"
+                    mountPath: /opt/IBM/ContentSearchServices/CSS_Server/log
                   - name: csstempstore
-                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/temp"
+                    mountPath: /opt/IBM/ContentSearchServices/CSS_Server/temp
                   - name: cssindexstore
-                    mountPath: "/opt/ibm/indexareas"
+                    mountPath: /opt/ibm/indexareas
                   - name: csscustomstore
-                    mountPath: "/opt/IBM/ContentSearchServices/CSS_Server/config"
+                    mountPath: /opt/IBM/ContentSearchServices/CSS_Server/config
               volumes:
                 - name: csscfgstore
                   persistentVolumeClaim:
@@ -1114,7 +1169,7 @@ Resources:
                 - name: csscustomstore
                   persistentVolumeClaim:
                     claimName: csscustomstore-pvc
-  # Deploy ICN container #
+  # Deploy ICN container
   fncmICNDeploymentStack:
     DependsOn: fncmCreateICNConfigPVC
     Type: "Custom::KubeManifest"
@@ -1317,7 +1372,7 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'ec2:DescribeVpcClassicLink'
-            Resource: '*'                        
+            Resource: '*'
           - Effect: Allow
             Action: 'ec2:ModifyInstanceAttribute'
             Resource: '*'
@@ -1404,7 +1459,7 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:EnableAvailabilityZonesForLoadBalancer'
-            Resource: '*'            
+            Resource: '*'
           - Effect: Allow
             Action: 'elasticloadbalancing:ModifyListener'
             Resource: '*'

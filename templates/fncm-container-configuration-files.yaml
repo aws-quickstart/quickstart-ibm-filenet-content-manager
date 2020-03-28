@@ -169,6 +169,8 @@ Resources:
         mainSteps:
           - action: 'aws:runShellScript'
             name: downloadSecUtilsFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -180,28 +182,34 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadLdapFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_ldap.template'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_ldap.template'
                     - '/home/ec2-user/ldap.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadDriverFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_OraJDBCDriver.template'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_OraJDBCDriver.template'
                     - '/home/ec2-user/OraJDBCDriver.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadJDBCDriver
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -213,61 +221,73 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadGcdFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_GCD.template'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_GCD.template'
                     - '/home/ec2-user/GCD.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadObjectstoreFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_OS1.template'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_OS1.template'
                     - '/home/ec2-user/OS1.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadNavigatorFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_ICNDS.template'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_ICNDS.template'
                     - '/home/ec2-user/ICNDS.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadDatabaseScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_container_database_files.sh'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_container_database_files.sh'
                     - '/home/ec2-user/FNCM_container_database_files.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadLdapScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_container_ldap_files.sh'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_container_ldap_files.sh'
                     - '/home/ec2-user/FNCM_container_ldap_files.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -280,6 +300,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runDatabaseScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -291,6 +313,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runLdapScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
