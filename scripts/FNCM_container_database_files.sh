@@ -24,7 +24,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Security utilities was not downloaded successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Set classpath to include required jar files
@@ -39,10 +39,10 @@ i=0
 while(($i<$TIME_OUT*2))
 do
 	if [[ -f /home/ec2-user/GCD.xml && /home/ec2-user/OS1.xml && /home/ec2-user/ICNDS.xml ]]; then
-		for i in GCD.xml OS1.xml ICNDS.xml; do \
-			sed -i -e "s/rds_endpoint/$Endpoint/g" /home/ec2-user/$i; \
-			sed -i -e "s/rds_db/$DBName/g" /home/ec2-user/$i; \
-			sed -i -e "s/rds_password/$DBPassword/g" /home/ec2-user/$i; \
+		for j in GCD.xml OS1.xml ICNDS.xml; do \
+			sed -i -e "s/rds_endpoint/$Endpoint/g" /home/ec2-user/$j; \
+			sed -i -e "s/rds_db/$DBName/g" /home/ec2-user/$j; \
+			sed -i -e "s/rds_password/$DBPassword/g" /home/ec2-user/$j; \
 		done
 		break
 	else
@@ -53,7 +53,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Container database XML files were not downloaded successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 echo "Database file updates complete."

@@ -34,7 +34,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Container LDAP XML file was not downloaded successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 echo "Ldap file updates complete."

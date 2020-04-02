@@ -141,7 +141,7 @@ Resources:
                 - Import-Module BitsTransfer
                 - >-
                   Start-BitsTransfer -Source
-                  'https://ibm-fncm-assets.s3.amazonaws.com/scripts/FNCM_populateLdap.ps1'
+                  'https://{{QSS3BucketName}}.s3.amazonaws.com/{{QSS3KeyPrefix}}scripts/FNCM_populateLdap.ps1'
                   -Destination "C:\AWSQuickstart\FNCM_populateLdap.ps1"
           - action: 'aws:runPowerShellScript'
             name: addUsersGroups
