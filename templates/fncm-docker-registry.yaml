@@ -6,7 +6,7 @@ Parameters:
     Type: String
   DockerRegistryEntitlementKey:
     Description: Paste the Entitlement Key here for Quick Start to pull docker images
-    Type: String    
+    Type: String
   CPERepoName:
     Type: String
     Description: Randomly generated CPE docker repo name from ECR
@@ -55,7 +55,7 @@ Resources:
           ECROrg:
             default: !Ref ECROrg
             description: The AWS organization where ECR is located
-            type: String            
+            type: String
           FinalLogin:
             default: !Ref FinalLogin
             description: The final login string
@@ -68,7 +68,7 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref CPERepoName
-                - ':ga-553-p8cpe-if001'
+                - ':ga-554-p8cpe-if001'
             type: String
           ICNRepoURI:
             default: !Join
@@ -77,9 +77,9 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref ICNRepoName                
-                - ':ga-306-icn-if002'
-            type: String                
+                - !Ref ICNRepoName
+                - ':ga-307-icn-if002'
+            type: String
           CSSRepoURI:
             default: !Join
               - ''
@@ -87,9 +87,9 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref CSSRepoName                
-                - ':ga-553-p8css-if001'
-            type: String                
+                - !Ref CSSRepoName
+                - ':ga-554-p8css-if001'
+            type: String
           CRSRepoURI:
             default: !Join
               - ''
@@ -97,9 +97,9 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref CRSRepoName                
-                - ':ga-553-p8cgql-if001'
-            type: String                
+                - !Ref CRSRepoName
+                - ':ga-554-p8cgql-if001'
+            type: String
           CMISRepoURI:
             default: !Join
               - ''
@@ -107,12 +107,14 @@ Resources:
                 - '.dkr.ecr.'
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
-                - !Ref CMISRepoName                
-                - ':ga-304-cmis-if008'
-            type: String                
+                - !Ref CMISRepoName
+                - ':ga-304-cmis-if010'
+            type: String
         mainSteps:
           - action: 'aws:runShellScript'
             name: DockerLoginIBMRegistry
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -122,96 +124,118 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCSSContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/css:ga-553-p8css-if001'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/css:ga-554-p8css-if001'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCPEContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/cpe:ga-553-p8cpe-if001'
-              workingDirectory: '/home/ec2-user'              
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cpe:ga-554-p8cpe-if001'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullICNContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/ban/navigator:ga-306-icn-if002'
-              workingDirectory: '/home/ec2-user'              
+                    - 'pull cp.icr.io/cp/cp4a/ban/navigator:ga-307-icn-if002'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCMISContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if008'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if010'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCQLContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/crs:ga-553-p8cgql-if001'
-              workingDirectory: '/home/ec2-user'              
+                    - 'pull cp.icr.io/cp/cp4a/fncm/graphql:ga-554-p8cgql-if001'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCSSContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/css:ga-553-p8css-if001 {{CSSRepoURI}}'
-              workingDirectory: '/home/ec2-user'            
+                    - 'tag cp.icr.io/cp/cp4a/fncm/css:ga-554-p8css-if001 {{CSSRepoURI}}'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCPEContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/cpe:ga-553-p8cpe-if001 {{CPERepoURI}}'
-              workingDirectory: '/home/ec2-user'              
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cpe:ga-554-p8cpe-if001 {{CPERepoURI}}'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagICNContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/ban/navigator:ga-306-icn-if002 {{ICNRepoURI}}'
-              workingDirectory: '/home/ec2-user'              
+                    - 'tag cp.icr.io/cp/cp4a/ban/navigator:ga-307-icn-if002 {{ICNRepoURI}}'
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCMISContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if008 {{CMISRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if010 {{CMISRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCRSContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/crs:ga-553-p8cgql-if001 {{CRSRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/graphql:ga-554-p8cgql-if001 {{CRSRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: ExecuteAWSGetECRLogin
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -222,33 +246,41 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PushCPEContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
                     - 'push {{CPERepoURI}}'
-              workingDirectory: '/home/ec2-user'              
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PushCSSContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
                     - 'push {{CSSRepoURI}}'
-              workingDirectory: '/home/ec2-user'            
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PushICNContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
                     - 'push {{ICNRepoURI}}'
-              workingDirectory: '/home/ec2-user'              
+              workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: pushCMISContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -258,6 +290,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PushCRSContainer
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -338,7 +372,7 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref CPERepoName
-        - ':ga-553-p8cpe-if001'
+        - ':ga-554-p8cpe-if001'
   ICNRepoURI:
     Value: !Join
       - ''
@@ -347,7 +381,7 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref ICNRepoName
-        - ':ga-306-icn-if002'
+        - ':ga-307-icn-if002'
   CMISRepoURI:
     Value: !Join
       - ''
@@ -355,8 +389,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref CMISRepoName        
-        - ':ga-304-cmis-if008'
+        - !Ref CMISRepoName
+        - ':ga-304-cmis-if010'
   CSSRepoURI:
     Value: !Join
       - ''
@@ -364,8 +398,8 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref CSSRepoName        
-        - ':ga-553-p8css-if001'
+        - !Ref CSSRepoName
+        - ':ga-554-p8css-if001'
   CRSRepoURI:
     Value: !Join
       - ''
@@ -373,5 +407,5 @@ Outputs:
         - '.dkr.ecr.'
         - !Ref ECRRegion
         - '.amazonaws.com/'
-        - !Ref CRSRepoName        
-        - ':ga-553-p8cgql-if001'
+        - !Ref CRSRepoName
+        - ':ga-554-p8cgql-if001'

@@ -48,17 +48,41 @@ CSS_class_name="Document"
 CSS_indexing_languages="en"
 CSS_temporary_work_area="/opt/ibm/textext"
 
+# Set timeout iterations in 30s intervals
+TIME_OUT=30
+
+# Set Java classpath to include required jar files
+LIBCLASSPATH="/home/ec2-user/cpelib/CPEUtils.jar:/home/ec2-user/cpelib/Jace.jar:/home/ec2-user/cpelib/log4j.jar:/home/ec2-user/cpelib/stax-api.jar:/home/ec2-user/cpelib/xercesImpl.jar:/home/ec2-user/cpelib/xlxpScanner.jar:/home/ec2-user/cpelib/xlxpScannerUtils.jar"
+
+# Restart CPE pods 
+Pods=$(runuser -l ec2-user -c "kubectl get pods | grep cpe")
+cpePods=$(echo $Pods | awk '{print $1 " " $6 " " $11}')
+for i in $cpePods; do
+        runuser -l ec2-user -c "kubectl delete pod $i"
+done
+
+i=0
+while(($i<$TIME_OUT))
+do
+	PodsOnline=$(runuser -l ec2-user -c "kubectl get deployment fncm-cpe -o jsonpath='{.status.readyReplicas}'")
+	if [[ $PodsOnline -eq "3" ]]; then
+		break
+	else
+        echo "$i. CPE pods have not started yet, wait 30 seconds and retry again...."
+        sleep 30s
+        let i++
+    fi
+done
+if [[ $i -eq $TIME_OUT ]]; then
+        echo "CPE not available. Exiting..."
+        exit 1
+fi
+
 # Determine the Liberty and CPE log file locations
 PodName=$(runuser -l ec2-user -c "kubectl get pods | grep cpe")
 CPE_PodName=$(echo $PodName | awk '{print $1}')
 CPE_LogLocation="/data/ecm/cpe/logstore/$CPE_PodName"
 FN_LogLocation="/data/ecm/cpe/fnlogstore/$CPE_PodName"
-
-# Set timeout values in minutes
-TIME_OUT=30
-
-# Set Java classpath to include required jar files
-LIBCLASSPATH="/home/ec2-user/cpelib/CPEUtils.jar:/home/ec2-user/cpelib/Jace.jar:/home/ec2-user/cpelib/log4j.jar:/home/ec2-user/cpelib/stax-api.jar:/home/ec2-user/cpelib/xercesImpl.jar:/home/ec2-user/cpelib/xlxpScanner.jar:/home/ec2-user/cpelib/xlxpScannerUtils.jar"
 
 # Check whether CPE Domain is ready - then create the Object Store
 i=0
@@ -66,6 +90,7 @@ while(($i<$TIME_OUT))
 do
 	isDomainReady=$(cat $CPE_LogLocation/messages.log | grep "PE Server started")
 	if [[ "$isDomainReady" != "" ]] ;then
+		sleep 60s
 		java -cp $LIBCLASSPATH com.ibm.CETools 'createObjectStore' $cpeMachine_nodeName  $CPE_PortNumber $CPE_BootstrapUsername $CPE_BootstrapUserPassword $cos_OSName $jdbcDataSourceName $jdbcDataSourceXAName $cos_AdminUsers $cos_Users '' ''
 		break
 	else
@@ -76,7 +101,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "CPE did not start successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Check whether Object Store is ready - then create the Workflow system
@@ -96,7 +121,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Create an Advanced Storge Area - check whether Object Store is ready
@@ -116,7 +141,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Configure CSS Search - when CPE Domain is ready
@@ -136,7 +161,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Create Index Area in Object Store - when Object Store is ready
@@ -156,7 +181,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Enable CBR on Object Store - when Object Store is ready
@@ -176,7 +201,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Create a sample folder - when Object Store is ready
@@ -196,7 +221,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Create a sample document - when Object Store is ready
@@ -216,5 +241,5 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Object Store was not created successfully. Exiting..."
-        exit
+        exit 1
 fi

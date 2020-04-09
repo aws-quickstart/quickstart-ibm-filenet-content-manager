@@ -22,7 +22,7 @@ Resources:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref 'BastionSecurityGroup'
-      IpProtocol: -1
+      IpProtocol: "-1"
       FromPort: -1
       ToPort: -1
       CidrIp: !Ref VPCCIDR
@@ -119,7 +119,7 @@ Resources:
                 cfnresponse.send(event, context, status, {}, None)
       Handler: "index.handler"
       Runtime: "python3.6"
-      Timeout: "5"
+      Timeout: 5
       Role: !GetAtt DescribeStackRole.Arn
 
   GetStackResources:
@@ -224,7 +224,7 @@ Resources:
                 cfnresponse.send(event, context, status, {}, None)
       Handler: "index.handler"
       Runtime: "python3.6"
-      Timeout: "5"
+      Timeout: 5
       Role: !GetAtt ModifyEfsMountSGRole.Arn
 
   ModifyEFSMountSG:

@@ -17,17 +17,8 @@ REPOSITORY_NAME="Default_Object_Store"
 PE_CONNPT_NAME="OS1Connection"
 PE_REGION_NUMBER="1"
 
-# Computed parameter values
-ICN_nodeName=$(runuser -l ec2-user -c "kubectl get ingress/$icnIngress -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
-CPE_nodeName=$(runuser -l ec2-user -c "kubectl get ingress/$cpeIngress -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
-
-# Determine the CPE log file location
-PodName=$(runuser -l ec2-user -c "kubectl get pods | grep cpe")
-CPE_PodName=$(echo $PodName | awk '{print $1}')
-FN_LogLocation="/data/ecm/cpe/fnlogstore/$CPE_PodName"
-
-# Set timeout values in minutes
-TIME_OUT=30
+# Set timeout iterations in 30s intervals
+TIME_OUT=60
 
 # Extract ICN utility files
 i=0
@@ -45,7 +36,7 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Navigator utilities was not downloaded successfully. Exiting..."
-        exit
+        exit 1
 fi
 
 # Restart Content Navigator pods
@@ -55,6 +46,10 @@ for i in $icnPods; do
         runuser -l ec2-user -c "kubectl delete pod $i"
 done
 
+# Computed parameter values
+ICN_nodeName=$(runuser -l ec2-user -c "kubectl get ingress/$icnIngress -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
+CPE_nodeName=$(runuser -l ec2-user -c "kubectl get ingress/$cpeIngress -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
+
 # Check whether Navigator and Object store are online - then create the Desktop and Repository
 i=0
 while(($i<$TIME_OUT))
@@ -63,8 +58,14 @@ do
 	if [[ $PodsOnline -eq "3" ]]; then
         isICNOnLine=$(curl -s -I http://$ICN_nodeName:$ICN_PortNumber/navigator | grep 302)
         if [[ "$isICNOnLine" != "" ]] ;then
+			# Determine the CPE log file location
+			PodName=$(runuser -l ec2-user -c "kubectl get pods | grep cpe")
+			CPE_PodName=$(echo $PodName | awk '{print $1}')
+			FN_LogLocation="/data/ecm/cpe/fnlogstore/$CPE_PodName"
+			# Check the CPE log file to see if the Object Store is ready
 			isOSReady=$(cat $FN_LogLocation/p8_server_error.log | grep "Starting queue dispatching" | grep "QueueItemDispatcher" )
 			if [[ "$isOSReady" != "" ]] ;then
+				sleep 60s
 				python ./icnutils/bin/icndefaultdriver.py --icnURL http://$ICN_nodeName:$ICN_PortNumber/navigator/ \
 				--icnAdmin $ICN_AdminUuser --icnPassd $ICN_AdminPassword --ceURL http://$CPE_nodeName:$CPE_PortNumber/wsi/FNCEWS40MTOM \
 				--objStoreName $P8OS_NAME --featureList browsePane searchPane favorites workPane  --defaultFeature browsePane  \
@@ -90,5 +91,5 @@ do
 done
 if [[ $i -eq $TIME_OUT ]]; then
         echo "Navigator not available. Exiting..."
-        exit
+        exit 1
 fi

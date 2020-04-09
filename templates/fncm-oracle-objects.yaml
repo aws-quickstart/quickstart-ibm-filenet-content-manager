@@ -142,6 +142,8 @@ Resources:
         mainSteps:
           - action: 'aws:runShellScript'
             name: downloadBasicclient
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -153,39 +155,47 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadSqlclient
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
-                    - 's3 cp'                  
+                    - 's3 cp'
                     - 's3://{{ORAFilesLocation}}/instantclient-sqlplus-linux.x64-19.3.0.0.0dbru.zip'
                     - '/home/ec2-user/instantclient-sqlplus-linux.x64-19.3.0.0.0dbru.zip'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadScriptFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
-                    - 's3 cp'                  
-                    - 's3://ibm-fncm-assets/scripts/FNCM_oracle_commands.sh'
+                    - 's3 cp'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_oracle_commands.sh'
                     - '/home/ec2-user/FNCM_oracle_commands.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadSqlscript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
-                    - 's3 cp'                  
-                    - 's3://ibm-fncm-assets/scripts/FNCM_oracle_database_objects.sql'
+                    - 's3 cp'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_oracle_database_objects.sql'
                     - '/home/ec2-user/FNCM_oracle_database_objects.sql'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -198,6 +208,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: createObjects
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join

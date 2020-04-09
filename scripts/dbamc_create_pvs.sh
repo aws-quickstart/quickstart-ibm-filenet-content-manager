@@ -1,65 +1,138 @@
 #!/bin/bash
 # creating PV directories on Bastion host to map EFS volumes
 
-sudo mkdir -p /data/ecm/cpe/cfgstore/
-cd /data/ecm/cpe/cfgstore/
+if (sudo mkdir -p /data/ecm/cpe/cfgstore/) ; then
+  echo "Created /data/ecm/cpe/cfgstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/cfgstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/filestore/
-cd /data/ecm/cpe/filestore/
+if (sudo mkdir -p /data/ecm/cpe/filestore/) ; then
+  echo "Created /data/ecm/cpe/filestore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/filestore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/bootstrapstore/
-cd /data/ecm/cpe/bootstrapstore/
+if (sudo mkdir -p /data/ecm/cpe/bootstrapstore/) ; then
+  echo "Created /data/ecm/cpe/bootstrapstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/bootstrapstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/fnlogstore/
-cd /data/ecm/cpe/fnlogstore/
+if (sudo mkdir -p /data/ecm/cpe/fnlogstore/) ; then
+  echo "Created /data/ecm/cpe/fnlogstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/fnlogstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/icmrulesstore/
-cd /data/ecm/cpe/icmrulesstore/
+if (sudo mkdir -p /data/ecm/cpe/icmrulesstore/) ; then
+  echo "Created /data/ecm/cpe/icmrulesstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/icmrulesstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/logstore/
-cd /data/ecm/cpe/logstore/
+if (sudo mkdir -p /data/ecm/cpe/logstore/) ; then
+  echo "Created /data/ecm/cpe/logstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/logstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cpe/textextstore/
-cd /data/ecm/cpe/textextstore/
+if (sudo mkdir -p /data/ecm/cpe/textextstore/) ; then
+  echo "Created /data/ecm/cpe/textextstore/ successfully"
+else
+  echo "Unable to create /data/ecm/cpe/textextstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/cfgstore/
-cd /data/ecm/icn/cfgstore/
+if (sudo mkdir -p /data/ecm/icn/cfgstore/) ; then
+  echo "Created /data/ecm/icn/cfgstore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/cfgstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/logstore/
-cd /data/ecm/icn/logstore/
+if (sudo mkdir -p /data/ecm/icn/logstore/) ; then
+  echo "Created /data/ecm/icn/logstore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/logstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/pluginstore/
-cd /data/ecm/icn/pluginstore/
+if (sudo mkdir -p /data/ecm/icn/pluginstore/) ; then
+  echo "Created /data/ecm/icn/pluginstore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/pluginstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/vwcachestore/
-cd /data/ecm/icn/vwcachestore/
+if (sudo mkdir -p /data/ecm/icn/vwcachestore/) ; then
+  echo "Created /data/ecm/icn/vwcachestore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/vwcachestore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/vwlogstore/
-cd /data/ecm/icn/vwlogstore/
+if (sudo mkdir -p /data/ecm/icn/vwlogstore/) ; then
+  echo "Created /data/ecm/icn/vwlogstore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/vwlogstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/icn/asperastore/
-cd /data/ecm/icn/asperastore/
+if (sudo mkdir -p /data/ecm/icn/asperastore/) ; then
+  echo "Created /data/ecm/icn/asperastore/ successfully"
+else
+  echo "Unable to create /data/ecm/icn/asperastore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/css/cfgstore/
-cd /data/ecm/css/cfgstore/
+if (sudo mkdir -p /data/ecm/css/cfgstore/) ; then
+  echo "Created /data/ecm/css/cfgstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/cfgstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/css/indexstore/
-cd /data/ecm/css/indexstore/
+if (sudo mkdir -p /data/ecm/css/indexstore/) ; then
+  echo "Created /data/ecm/css/indexstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/indexstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/css/logstore/
-cd /data/ecm/css/logstore/
+if (sudo mkdir -p /data/ecm/css/logstore/) ; then
+  echo "Created /data/ecm/css/logstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/logstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/css/tempstore/
-cd /data/ecm/css/tempstore/
+if (sudo mkdir -p /data/ecm/css/tempstore/) ; then
+  echo "Created /data/ecm/css/tempstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/tempstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/css/customstore/
-cd /data/ecm/css/customstore/
+if (sudo mkdir -p /data/ecm/css/customstore/) ; then
+  echo "Created /data/ecm/css/customstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/customstore/"
+  exit 1
+fi
 
-sudo mkdir -p /data/ecm/cmis/cfgstore/
-cd /data/ecm/cmis/cfgstore/
-
-sudo mkdir -p /data/ecm/cmis/logstore/
-cd /data/ecm/cmis/logstore/
+if (sudo mkdir -p /data/ecm/css/customstore/) ; then
+  echo "Created /data/ecm/css/customstore/ successfully"
+else
+  echo "Unable to create /data/ecm/css/customstore/"
+  exit 1
+fi
 
 runuser -l ec2-user -c "kubectl config set-context aws --namespace=fncm"
 

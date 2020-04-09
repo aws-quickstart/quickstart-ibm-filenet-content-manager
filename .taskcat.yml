@@ -1,54 +1,42 @@
-general:
-  parameters:
-    KeyPairName: $[taskcat_getkeypair]
 project:
   name: quickstart-ibm-filenet-content-manager
-  owner: abrakhan@us.ibm.com
+  owner: quickstart-eng@amazon.com
+  package_lambda: false
+  s3_regional_buckets: false
+  shorten_stack_name: true
   regions:
-    - us-east-2
+  - us-east-1
+  - us-east-2
+  - us-west-2
+  - eu-central-1
+  - eu-west-1
+  - eu-west-2
+  - ap-northeast-1
+  - ap-southeast-1
+  - ap-southeast-2
+  s3_bucket: ''
 tests:
-  default:
-    template: ./templates/fncm-new-vpc.template.yaml
+  fncm-1:
     parameters:
-      ADServer1InstanceType: "m5.xlarge"
-      ADServer1NetBIOSName: "DC1"
-      ADServer1PrivateIP: "10.0.0.10"
-      ADServer2InstanceType: "m5.xlarge"
-      ADServer2NetBIOSName: "DC2"
-      ADServer2PrivateIP: "10.0.32.10"
-      AdditionalEKSAdminArns: ""
       AvailabilityZones: $[taskcat_genaz_3]
-      DBInstanceClass: "db.m5.large"
-      DBInstanceIdentifier: "FNCMORCL"
-      DBName: "P8DB"
       DBPassword: $[taskcat_genpass_8A]
-      DBUser: "P8Admin"
-      DockerRegistryEntitlementKey: "override"
+      DockerRegistryEntitlementKey: override
       DomainAdminPassword: $[taskcat_genpass_12A]
-      DomainAdminUser: "Admin"
-      DomainDNSName: "example.com"
-      DomainNetBIOSName: "example"
-      FNCMVersion: "FileNet Content Manager 5.5.3"
-      KubernetesVersion: "1.14"
-      LambdaZipsBucketName: ""
-      NodeGroupName: "Default"
-      NodeInstanceType: "t2.xlarge"
-      NodeVolumeSize: 20
-      NumberOfNodes: 3
-      NumberOfRDGWHosts: 1
-      ORAFilesLocation: "cftests"
-      ORAVersion: "12.2"
-      PrivateSubnet1CIDR: "10.0.0.0/19"
-      PrivateSubnet2CIDR: "10.0.32.0/19"
-      PrivateSubnet3CIDR: "10.0.64.0/19"
-      PublicSubnet1CIDR: "10.0.128.0/20"
-      PublicSubnet2CIDR: "10.0.144.0/20"
-      PublicSubnet3CIDR: "10.0.160.0/20"
+      KeyPairName: override
+      ORAFilesLocation: override
       QSS3BucketName: $[taskcat_autobucket]
-      QSS3KeyPrefix: "quickstart-ibm-filenet-content-manager/"
-      RDGWCIDR: "10.0.0.0/16"
-      RDGWInstanceType: "t2.large"
-      RemoteAccessCIDR: "10.0.0.0/16"
-      VPCCIDR: "10.0.0.0/16"
-      SSLCertARN: "override"
-      
+      RDGWCIDR: 10.0.0.0/16
+      RemoteAccessCIDR: 10.0.0.0/16
+      SSLCertARN: override
+    regions:
+    - us-east-1
+    - us-east-2
+    - us-west-2
+    - eu-central-1
+    - eu-west-1
+    - eu-west-2
+    - ap-northeast-1
+    - ap-southeast-1
+    - ap-southeast-2
+    s3_bucket: ''
+    template: templates/fncm-new-vpc.template.yaml

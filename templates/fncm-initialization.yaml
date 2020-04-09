@@ -91,7 +91,7 @@ Parameters:
     Type: String
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
-    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.    
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup
@@ -141,6 +141,8 @@ Resources:
         mainSteps:
           - action: 'aws:runShellScript'
             name: downloadCPELibsFile
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -152,28 +154,34 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadGcdScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://ibm-fncm-assets/scripts/FNCM_createGCD.sh'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_createGCD.sh'
                     - '/home/ec2-user/FNCM_createGCD.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: downloadObjectstoreScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
                   - ' '
                   - - '"aws"'
-                    - 's3 cp'                  
-                    - 's3://ibm-fncm-assets/scripts/FNCM_createOS1.sh'
+                    - 's3 cp'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_createOS1.sh'
                     - '/home/ec2-user/FNCM_createOS1.sh'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: setFilePermissions
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -186,6 +194,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runGCDScript
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join
@@ -200,6 +210,8 @@ Resources:
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: runOS1Script
+            maxAttempts: 3
+            onFailure: Abort
             inputs:
               runCommand:
                 - !Join

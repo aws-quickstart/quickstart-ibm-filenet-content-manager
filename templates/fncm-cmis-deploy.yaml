@@ -1,0 +1,470 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This template deploys the CMIS Container into an existing Kubernetes cluster
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Kubernetes parameters
+      Parameters:
+      - KubeManifestLambdaArn
+      - KubeConfigPath
+      - KubeConfigKmsContext
+      - KubeGetLambdaArn
+      - QSS3BucketName
+      - QSS3KeyPrefix
+      - CMISRepoURI
+      - SSLCertARN
+      - FNCMSSMSendCommandLambdaRoleARN
+      - FNCMNameSpace
+      - BastionASGName
+      - RemoteAccessCIDR
+    ParameterLabels:
+      KubeManifestLambdaArn:
+        default: Kube Manifest Lambda Arn
+      KubeConfigPath:
+        default: Kube Config Path
+      KubeConfigKmsContext:
+        default: Kube Config Kms Context
+      CMISRepoURI:
+        default: CMIS Repo URI
+      KubeGetLambdaArn:
+        default: Kube Get Lambda Arn
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      SSLCertARN:
+        default: SSL/TLS certificate ARN
+      FNCMSSMSendCommandLambdaRoleARN:
+        default: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+      FNCMNameSpace:
+        default: Kubernetes name space for deploying containers.
+      BastionASGName:
+        default: Auto Scaling Group Name of the Bastion Host
+      RemoteAccessCIDR:
+        default: CIDR IP range that is permitted to access the load balancers
+Parameters:
+  KubeManifestLambdaArn:
+    Type: String
+  KubeConfigPath:
+    Type: String
+  KubeConfigKmsContext:
+    Type: String
+    Default: "EKSQuickStart"
+  CMISRepoURI:
+    Type: String
+  KubeGetLambdaArn:
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    Default: aws-quickstart
+    Description: The S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/.]*$
+    Default: quickstart-ibm-filenet-content-manager/
+    Description: The S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  SSLCertARN:
+    Type: String
+  FNCMSSMSendCommandLambdaRoleARN:
+    Type: String
+    Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+  FNCMNameSpace:
+    Type: String
+    Description: Kubernetes name space for deploying containers.
+    Default: fncm
+  BastionASGName:
+    Description: Auto Scaling Group Name of the Bastion Host
+    Type: String
+  RemoteAccessCIDR:
+    Description: The CIDR IP range that is permitted to access the load balancers.
+    Type: String
+Resources:
+  # Create CMIS container PVCs
+  CreateCMISConfigPVC:
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref 'KubeManifestLambdaArn'
+      KubeConfigPath: !Ref 'KubeConfigPath'
+      KubeConfigKmsContext: !Ref 'KubeConfigKmsContext'
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cmis-cfgstore-pvc'
+          namespace: !Ref 'FNCMNameSpace'
+        spec:
+          storageClassName: aws-efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  CreateCMISLogPVC:
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: 'cmis-logstore-pvc'
+          namespace: !Ref 'FNCMNameSpace'
+        spec:
+          storageClassName: aws-efs
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  MountPVandConfigDocuments:
+    DependsOn: CreateCMISLogPVC
+    Type: 'AWS::SSM::Document'
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: Mount CMIS PVs
+        parameters:
+          QSS3BucketName:
+            default: !Ref QSS3BucketName
+            description: The AWS S3 Bucket Name
+            type: String
+          QSS3KeyPrefix:
+            default: !Ref QSS3KeyPrefix
+            description: The AWS S3 Key Prefix
+            type: String
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: downloadCMISCreatePVScript
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/create_cmis_pvs.sh'
+                    - '/home/ec2-user/create_cmis_pvs.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: downloadConfigurationCopyScript
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"aws"'
+                    - 's3 cp'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_copy_cmis_config_files.sh'
+                    - '/home/ec2-user/FNCM_copy_cmis_config_files.sh'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: setFilePermissions
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chmod"'
+                    - '755 /home/ec2-user/*.sh'
+                    - ';'
+                    - '"chown"'
+                    - '-R ec2-user:ec2-user /home/ec2-user'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: runCreatePVsScript
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/home/ec2-user/create_cmis_pvs.sh"'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: copyConfigurationFiles
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"/home/ec2-user/FNCM_copy_cmis_config_files.sh"'
+              workingDirectory: '/home/ec2-user'
+          - action: 'aws:runShellScript'
+            name: setPVPermissionsAndOwnership
+            maxAttempts: 3
+            onFailure: Abort
+            inputs:
+              runCommand:
+                - !Join
+                  - ' '
+                  - - '"chown"'
+                    - '-R 50001:root /data'
+                    - ';'
+                    - '"chmod"'
+                    - '-R 775 /data'
+              workingDirectory: '/home/ec2-user'
+  ExecuteMountPVandConfigDocumentsLambda:
+    Type: 'AWS::Lambda::Function'
+    DependsOn:
+      - MountPVandConfigDocuments
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.7
+      Code:
+        ZipFile: !Join
+          - |+
+
+          - - import boto3
+            - 'import os, time,json'
+            - import cfnresponse
+            - import logging
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            cfnresponse.send(event, context, status, {})'
+            - '        else:'
+            - '            ssm = boto3.client(''ssm'')'
+            - ''
+            - '            asg = boto3.client(''autoscaling'')'
+            - '            asg_name = event[''ResourceProperties''][''BastionASGName'']'
+            - '            responseAsg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])'
+            - '            instanceId = responseAsg[''AutoScalingGroups''][0][''Instances''][0][''InstanceId'']'
+            - '            ssmDocument = event[''ResourceProperties''][''SSMDocument'']'
+            - '            responseData = {}'
+            - ''
+            - '            response=ssm.send_command('
+            - '                InstanceIds = [instanceId],'
+            - '                DocumentName=ssmDocument,'
+            - '                TimeoutSeconds=3600,'
+            - '                Comment=''Mount PVs and copy configuration files'','
+            - '                CloudWatchOutputConfig={''CloudWatchOutputEnabled'': True, ''CloudWatchLogGroupName'': ''QuickStartLogs''},'
+            - '                MaxConcurrency=''50'','
+            - '                MaxErrors=''5'','
+            - '            )'
+            - ''
+            - '            cmdId = response[''Command''][''CommandId'']'
+            - '            responseData[''CommandId''] = cmdId'
+            - '            print(''Started object creation in CommandId: '' + cmdId)'
+            - '            print(''Bastion Host Instance: '' + instanceId)'
+            - '            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+      Description: Executes PV creation and mount script on Bastion host
+      MemorySize: 320
+      Timeout: 180
+      Role: !Ref FNCMSSMSendCommandLambdaRoleARN
+  ExecuteConfigObjectsDocuments:
+    Type: 'Custom::ExecuteConfigObjectsDocument'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt
+        - ExecuteMountPVandConfigDocumentsLambda
+        - Arn
+      SSMDocument: !Ref MountPVandConfigDocuments
+      BastionASGName: !Ref BastionASGName
+  # Create CMIS service
+  CMISServicetack:
+    DependsOn: CreateCMISConfigPVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: fncm-cmis-svc
+          namespace: !Ref FNCMNameSpace
+        spec:
+          ports:
+            - name: http
+              protocol: TCP
+              port: 9080
+              targetPort: 9080
+              nodePort: 31007
+            - name: https
+              protocol: TCP
+              port: 9443
+              targetPort: 9443
+              nodePort: 31008
+          selector:
+            app: ibm-dba-cmis
+          type: NodePort
+          sessionAffinity: ClientIP
+  # Deploy CMIS container
+  CMISDeploymentStack:
+    DependsOn: CreateCMISConfigPVC
+    Type: "Custom::KubeManifest"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest:
+        apiVersion: apps/v1beta2
+        kind: Deployment
+        metadata:
+          name: fncm-cmis
+          namespace: !Ref FNCMNameSpace
+          labels:
+            app: ibm-dba-cmis
+        spec:
+          replicas: 2
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+          selector:
+            matchLabels:
+              app: ibm-dba-cmis
+          template:
+            metadata:
+              name: ibm-dba-cmis
+              labels:
+                app: ibm-dba-cmis
+            spec:
+              affinity:
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - ibm-dba-cmis
+                        topologyKey: "kubernetes.io/hostname"
+              containers:
+              - image: !Ref 'CMISRepoURI'
+                imagePullPolicy: IfNotPresent
+                name: fncm-cmis
+                securityContext:
+                  runAsUser: 50001
+                  allowPrivilegeEscalation: true
+                resources:
+                  requests:
+                    memory: 512Mi
+                    cpu: 500m
+                  limits:
+                    memory: 1024Mi
+                    cpu: 1
+                ports:
+                  - containerPort: 9080
+                    name: http
+                  - containerPort: 9443
+                    name: https
+                env:
+                  - name: "LICENSE"
+                    value: 'accept'
+                  - name: "CMIS_VERSION"
+                    value: '1.1'
+                  - name: "CE_URL"
+                    value: 'http://fncm-cpe-svc:9080/wsi/FNCEWS40MTOM'
+                  - name: "TZ"
+                    value: 'Etc/UTC'
+                  - name: "JVM_HEAP_XMS"
+                    value: '512m'
+                  - name: "JVM_HEAP_XMX"
+                    value: '1024m'
+                readinessProbe:
+                  httpGet:
+                    path: /
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 180
+                  periodSeconds: 5
+                livenessProbe:
+                  httpGet:
+                    path: /
+                    port: 9080
+                    httpHeaders:
+                      - name: Content-Encoding
+                        value: gzip
+                  initialDelaySeconds: 600
+                  periodSeconds: 5
+                volumeMounts:
+                  - name: cmis-cfgstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/configDropins/overrides
+                  - name: cmis-logstore
+                    mountPath: /opt/ibm/wlp/usr/servers/defaultServer/logs
+              volumes:
+                - name: cmis-cfgstore
+                  persistentVolumeClaim:
+                    claimName: cmis-cfgstore-pvc
+                - name: cmis-logstore
+                  persistentVolumeClaim:
+                    claimName: cmis-logstore-pvc
+  # Create CMIS Load Balancer
+  CreateCMISLoadBalancer:
+    Type: "Custom::KubeManifest"
+    DependsOn: CMISDeploymentStack
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeManifestLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Manifest: !Sub |
+        apiVersion: extensions/v1beta1
+        kind: Ingress
+        metadata:
+          name: cmis-ingress
+          namespace: fncm
+          annotations:
+            kubernetes.io/ingress.class: alb
+            alb.ingress.kubernetes.io/scheme: internet-facing
+            alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+            alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
+          labels:
+            app: cmis-ingress
+        spec:
+          rules:
+            - http:
+                paths:
+                  - path: /*
+                    backend:
+                      serviceName: fncm-cmis-svc
+                      servicePort: 9080
+  # Get Load Balancer URL for CMIS
+  CMISLoadBalancerURL:
+    DependsOn: CreateCMISLoadBalancer
+    Type: "Custom::KubeGet"
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Ref KubeGetLambdaArn
+      KubeConfigPath: !Ref KubeConfigPath
+      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      Namespace: fncm
+      Name: 'ing/cmis-ingress'
+      JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
+Outputs:
+  CMISLoadBalancerHTTPSURL:
+    Description: The Application Load Balancer (HTTPS URL) for CMIS
+    Value: !Sub "https://${CMISLoadBalancerURL}/openfncmis_wlp"

@@ -69,6 +69,8 @@ Metadata:
       Parameters:
       - FNCMVersion
       - DockerRegistryEntitlementKey
+      - DeployContentGraphQL
+      - DeployCMIS
     - Label:
         default: AWS Quick Start configuration
       Parameters:
@@ -119,6 +121,10 @@ Metadata:
         default: Version of FileNet Content Manager
       DockerRegistryEntitlementKey:
         default: IBM Entitlement Registry - Entitlement Key
+      DeployContentGraphQL:
+        default: Deploy and configure the Content Services GraphQL component
+      DeployCMIS:
+        default: Deploy and configure the Content Management Interoperability Services component
       # Oracle RDS Parameters
       ORAFilesLocation:
         default: Location of the downloaded Oracle client
@@ -162,7 +168,7 @@ Metadata:
       RDGWInstanceType:
         default: Remote desktop gateway instance type
       RDGWCIDR:
-        default: Remote desktop gateway external eccess CIDR
+        default: Remote desktop gateway external access CIDR
 Parameters:
   AvailabilityZones:
     Description: The list of Availability Zones to use for the subnets in the VPC. Three
@@ -358,14 +364,28 @@ Parameters:
     Default: "1.14"
   FNCMVersion:
     Type: String
-    Default: "FileNet Content Manager 5.5.3"
-    AllowedValues: [ "FileNet Content Manager 5.5.3" ]
+    Default: "FileNet Content Manager 5.5.4"
+    AllowedValues: [ "FileNet Content Manager 5.5.4" ]
     Description: The version of FileNet Content Manager to be deployed by this Quick Start.
   DockerRegistryEntitlementKey:
     Type: String
     AllowedPattern: (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
     MinLength: '8'
     Description: Copy/paste the IBM entitlement key here for Quick Start to pull FileNet Content Manager docker images from IBM Entitlement Registry.  To obtain Entitlement Key, go here https://myibm.ibm.com/products-services/containerlibrary.
+  DeployContentGraphQL:
+    Type: String
+    Description: Deploy and configure the Content Services GraphQL component
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  DeployCMIS:
+    Type: String
+    Description: Deploy and configure the Content Management Interoperability Services component
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'    
 # Oracle RDS Database Parameters
   ORAFilesLocation:
     Description: Provide the S3 location of the downloaded Oracle client files (please do not include the s3:// and the trailing forward slash).
@@ -539,6 +559,8 @@ Parameters:
 Conditions:
   # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
   IsIAMAPIKey: !Equals [ !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]], "iamapikey"]
+  ContentGraphQL: !Equals [ !Ref DeployContentGraphQL, "true"]
+  CMIS: !Equals [ !Ref DeployCMIS, "true"]
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
@@ -796,7 +818,7 @@ Resources:
         VPCPublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
 # Create the CPE GCD and Object Store
   CPEInitialization:
-    DependsOn: FNCMDeploymentStack
+    DependsOn: FNCMLoadBalancerStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-initialization.yaml'
@@ -827,6 +849,46 @@ Resources:
         QSS3BucketName: !Ref 'QSS3BucketName'
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
+  # Configure and deploy the Content Services GraphQL container 
+  CRSDeploymentStack:
+    DependsOn: CPEInitialization
+    Condition: ContentGraphQL
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-crs-deploy.yaml'
+      Parameters:
+        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
+        KubeConfigKmsContext: "EKSQuickStart"
+        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
+        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        CRSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CRSRepoURI
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        SSLCertARN: !Ref SSLCertARN
+        FNCMNameSpace: "fncm"
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+  # Configure and deploy the Content Services GraphQL container 
+  CMISDeploymentStack:
+    DependsOn: ICNInitialization
+    Condition: CMIS
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-cmis-deploy.yaml'
+      Parameters:
+        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
+        KubeConfigKmsContext: "EKSQuickStart"
+        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
+        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
+        CMISRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CMISRepoURI
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        SSLCertARN: !Ref SSLCertARN
+        FNCMNameSpace: "fncm"
+        FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR        
 Outputs:
   KubeConfigPath:
     Value: !GetAtt EKSStack.Outputs.KubeConfigPath
