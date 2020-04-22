@@ -12,6 +12,7 @@ Metadata:
           default: AWS Quick Start configuration
         Parameters:
           - QSS3BucketName
+          - QSS3BucketRegion
           - QSS3KeyPrefix
       - Label:
           default: Oracle RDS Configuration
@@ -42,6 +43,8 @@ Metadata:
         default: Domain name of the forest root domain e.g. example
       BaseDN2:
         default: Domain name of the forest root domain e.g. com
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
 Parameters:
   QSS3BucketName:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
@@ -52,6 +55,10 @@ Parameters:
     Description: The S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
     Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/]*$
@@ -112,6 +119,8 @@ Parameters:
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   QuickStartLogs:
     Type: AWS::Logs::LogGroup

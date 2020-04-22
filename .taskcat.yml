@@ -1,8 +1,10 @@
 project:
   name: quickstart-ibm-filenet-content-manager
   owner: quickstart-eng@amazon.com
-  package_lambda: false
-  s3_regional_buckets: false
+  package_lambda: true
+  lambda_source_path: functions/source
+  lambda_zip_path: functions/packages
+  s3_regional_buckets: true
   shorten_stack_name: true
   regions:
   - us-east-1
@@ -25,6 +27,7 @@ tests:
       KeyPairName: override
       ORAFilesLocation: override
       QSS3BucketName: $[taskcat_autobucket]
+      QSS3BucketRegion: $[taskcat_current_region]
       RDGWCIDR: 10.0.0.0/16
       RemoteAccessCIDR: 10.0.0.0/16
       SSLCertARN: override
