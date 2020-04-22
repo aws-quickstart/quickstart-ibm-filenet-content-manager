@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cleans up VPC dependencies prior to stack deletion (qs-1qlnn9orb)
+Parameters:
+  VPCID:
+    Description: 'ID of the VPC (e.g., vpc-0343606e).'
+    Type: 'AWS::EC2::VPC::Id'
+Resources:
+
+  CleanupVPCRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "lambda_policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ec2:DeleteSecurityGroup
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+                Condition:
+                  ArnEquals:
+                    ec2:Vpc: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VPCID}
+
+  CleanupVPCLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+      - CleanupVPCRole
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import logging
+          import json
+          import cfnresponse
+
+          def delete_sgs(vpc_id):
+              try:
+                  ec2_client = boto3.client('ec2')
+                  sgs = ec2_client.describe_security_groups(
+                      Filters=[
+                          {
+                              'Name': 'vpc-id',
+                              'Values': [vpc_id]
+                          },
+                  	      {
+                              'Name': 'tag:ingress.k8s.aws/resource',
+                              'Values': ['ManagedLBSecurityGroup']
+                          }
+                      ]
+                  )
+                  sg_ids = [x['GroupId'] for x in sgs['SecurityGroups']]
+                  for sg in sg_ids:
+                    ec2_client.delete_security_group(GroupId = sg)
+
+                  return 'SUCCESS'
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
+          def handler(event, context):
+            print('Received event: %s' % json.dumps(event))
+            status = cfnresponse.SUCCESS
+            try:
+                if event['RequestType'] != 'Delete':
+                    cfnresponse.send(event, context, status, {})
+                else:
+                    VPC_ID = event['ResourceProperties']['VPCID']
+                    responseData = {}
+                    responseData['status'] = delete_sgs(VPC_ID)
+                    print(responseData)
+                    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+                logging.error('Exception: %s' % e, exc_info=True)
+                status = cfnresponse.FAILED
+                cfnresponse.send(event, context, status, {}, None)
+      Handler: "index.handler"
+      Runtime: "python3.6"
+      Timeout: 5
+      Role: !GetAtt CleanupVPCRole.Arn
+
+  CleanupVPC:
+    Type: "Custom::CleanupVPC"
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt CleanupVPCLambda.Arn
+      VPCID: !Ref 'VPCID'
+
+
+Outputs:
+  CleanupVPCRoleArn:
+    Value: !GetAtt CleanupVPCRole.Arn
