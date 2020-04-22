@@ -1098,9 +1098,6 @@ Resources:
               labels:
                 app: ibm-dba-contentsearch
             spec:
-              imagePullSecrets:
-                - name: docker-registry-secret
-            spec:
               affinity:
                 podAntiAffinity:
                   preferredDuringSchedulingIgnoredDuringExecution:
