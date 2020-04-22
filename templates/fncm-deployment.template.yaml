@@ -17,6 +17,7 @@ Metadata:
       - CRSRepoURI
       - EKSClusterName
       - QSS3BucketName
+      - QSS3BucketRegion
       - QSS3KeyPrefix
       - SSLCertARN
       - NodeInstanceRoleName
@@ -43,6 +44,8 @@ Metadata:
         default: EKS Cluster Name        
       QSS3BucketName:
         default: Quick Start S3 bucket name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 key prefix
       SSLCertARN:
@@ -82,6 +85,10 @@ Parameters:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
     Default: aws-quickstart
     Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/.]*$
     Default: aws-quickstart-fncm/
@@ -96,6 +103,8 @@ Parameters:
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
     Type: String
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:

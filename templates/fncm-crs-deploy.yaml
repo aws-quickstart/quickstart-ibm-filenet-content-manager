@@ -11,6 +11,7 @@ Metadata:
       - KubeConfigKmsContext
       - KubeGetLambdaArn
       - QSS3BucketName
+      - QSS3BucketRegion
       - QSS3KeyPrefix
       - CRSRepoURI
       - SSLCertARN
@@ -31,6 +32,8 @@ Metadata:
         default: Kube Get Lambda Arn
       QSS3BucketName:
         default: Quick Start S3 bucket name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 key prefix
       SSLCertARN:
@@ -62,6 +65,10 @@ Parameters:
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
     Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/.]*$
     Default: quickstart-ibm-filenet-content-manager/
@@ -84,6 +91,8 @@ Parameters:
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
     Type: String
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   # Create CRS container PVCs
   CreateCRSConfigPVC:
