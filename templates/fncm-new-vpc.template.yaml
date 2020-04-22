@@ -642,7 +642,7 @@ Resources:
           - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
             S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
-        AdditionalEKSAdminArns: !Join [ ",", [!Ref AdditionalEKSAdminArns, !GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
+        AdditionalEKSAdminRoleArn: !GetAtt FNCMIAMStack.Outputs.BastionRoleARN
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
   FNCMSGStack:
