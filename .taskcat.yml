@@ -1,7 +1,9 @@
 project:
   name: quickstart-ibm-filenet-content-manager
   owner: quickstart-eng@amazon.com
-  package_lambda: false
+  package_lambda: true
+  lambda_source_path: functions/source
+  lambda_zip_path: functions/packages
   s3_regional_buckets: true
   shorten_stack_name: true
   regions:

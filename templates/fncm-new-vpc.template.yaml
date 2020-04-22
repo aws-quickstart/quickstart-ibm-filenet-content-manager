@@ -602,8 +602,18 @@ Resources:
       Parameters:
         QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         ORAFilesLocation: !Ref ORAFilesLocation
+  FNCMCleanupVPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-vpc-cleanup.template.yaml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        VPCID: !GetAtt VPCStack.Outputs.VPCID
   EKSStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: FNCMCleanupVPCStack
     Properties:
       TemplateURL: !Sub
       - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/templates/amazon-eks.template.yaml'
