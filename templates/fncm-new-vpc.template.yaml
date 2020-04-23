@@ -625,6 +625,7 @@ Resources:
         PublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
         EfsStorageClass: Enabled
         KeyPairName: !Ref KeyPairName
+        EKSClusterLoggingTypes: "api,audit,authenticator,controllerManager,scheduler"
         QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-amazon-eks/"
