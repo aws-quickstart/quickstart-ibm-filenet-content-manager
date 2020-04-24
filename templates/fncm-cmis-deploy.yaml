@@ -7,8 +7,6 @@ Metadata:
         default: Kubernetes parameters
       Parameters:
       - KubeManifestLambdaArn
-      - KubeConfigPath
-      - KubeConfigKmsContext
       - KubeGetLambdaArn
       - QSS3BucketName
       - QSS3BucketRegion
@@ -22,10 +20,6 @@ Metadata:
     ParameterLabels:
       KubeManifestLambdaArn:
         default: Kube Manifest Lambda Arn
-      KubeConfigPath:
-        default: Kube Config Path
-      KubeConfigKmsContext:
-        default: Kube Config Kms Context
       CMISRepoURI:
         default: CMIS Repo URI
       KubeGetLambdaArn:
@@ -49,11 +43,6 @@ Metadata:
 Parameters:
   KubeManifestLambdaArn:
     Type: String
-  KubeConfigPath:
-    Type: String
-  KubeConfigKmsContext:
-    Type: String
-    Default: "EKSQuickStart"
   CMISRepoURI:
     Type: String
   KubeGetLambdaArn:
@@ -100,8 +89,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref 'KubeManifestLambdaArn'
-      KubeConfigPath: !Ref 'KubeConfigPath'
-      KubeConfigKmsContext: !Ref 'KubeConfigKmsContext'
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -120,8 +107,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -298,8 +283,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
       Manifest:
         apiVersion: v1
         kind: Service
@@ -329,8 +312,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
       Manifest:
         apiVersion: apps/v1beta2
         kind: Deployment
@@ -436,8 +417,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
         kind: Ingress
@@ -468,8 +447,6 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
       Namespace: fncm
       Name: 'ing/cmis-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
