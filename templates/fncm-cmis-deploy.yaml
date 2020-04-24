@@ -43,6 +43,8 @@ Metadata:
 Parameters:
   KubeManifestLambdaArn:
     Type: String
+  KubeClusterName:
+    Type: String
   CMISRepoURI:
     Type: String
   KubeGetLambdaArn:
@@ -89,6 +91,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref 'KubeManifestLambdaArn'
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -107,6 +110,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -283,6 +287,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: Service
@@ -312,6 +317,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: apps/v1beta2
         kind: Deployment
@@ -417,6 +423,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
         kind: Ingress
@@ -447,6 +454,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/cmis-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'

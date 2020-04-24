@@ -55,6 +55,8 @@ Metadata:
 Parameters:
   KubeManifestLambdaArn:
     Type: String
+  KubeClusterName:
+    Type: String
   BastionASGName:
     Description: Auto Scaling Group Name of the Bastion Host
     Type: String
@@ -108,6 +110,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -121,6 +124,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         kind: ClusterRole
@@ -143,6 +147,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         kind: ClusterRoleBinding
@@ -166,6 +171,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -182,6 +188,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Cluster name
       EKSClusterName: !Ref EKSClusterName
       # Kubernetes manifest
@@ -232,6 +239,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -251,6 +259,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -270,6 +279,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -289,6 +299,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -308,6 +319,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -327,6 +339,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -346,6 +359,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -368,6 +382,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -387,6 +402,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -406,6 +422,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -425,6 +442,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -444,6 +462,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -466,6 +485,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -485,6 +505,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -504,6 +525,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -523,6 +545,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -542,6 +565,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -561,6 +585,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -758,6 +783,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -790,6 +816,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -818,6 +845,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -854,6 +882,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -986,6 +1015,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -1096,6 +1126,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -1450,6 +1481,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
@@ -1481,6 +1513,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |
         apiVersion: extensions/v1beta1

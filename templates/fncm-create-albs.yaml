@@ -3,6 +3,8 @@ Description: Create ALBs for FileNet Content Manager components
 Parameters:
   KubeManifestLambdaArn:
     Type: String
+  KubeClusterName:
+    Type: String
   KubeGetLambdaArn:
     Type: String
   VPCID:
@@ -28,6 +30,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/cpe-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
@@ -37,6 +40,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/icn-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'   
