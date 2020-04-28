@@ -168,7 +168,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_cors.TEMPLATE'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_cors.template'
                     - '/home/ec2-user/cors.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
