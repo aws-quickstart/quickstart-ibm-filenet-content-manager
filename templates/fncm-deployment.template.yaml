@@ -94,6 +94,9 @@ Parameters:
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
     Type: String
+  BastionPublicIPCIDR:
+    Description: The CIDR IP range of the bastion host.
+    Type: String
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
@@ -1494,7 +1497,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
-            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR},${BastionPublicIPCIDR}
             alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
           labels:
             app: cpe-ingress
@@ -1526,7 +1529,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
-            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR},${BastionPublicIPCIDR}
             alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
           labels:
             app: icn-ingress
