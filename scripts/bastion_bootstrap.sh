@@ -427,14 +427,19 @@ EOF
 
 function install_kubernetes_client_tools() {
     mkdir -p /usr/local/bin/
-    retry_command 20 curl --retry 5 -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.11.5/2018-12-06/bin/linux/amd64/aws-iam-authenticator
+    retry_command 20 curl --retry 5 -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.15.10/2020-02-22/bin/linux/amd64/aws-iam-authenticator
     chmod +x ./aws-iam-authenticator
     mv ./aws-iam-authenticator /usr/local/bin/
-    retry_command 20 curl --retry 5 -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.11.5/2018-12-06/bin/linux/amd64/kubectl
+    retry_command 20 curl --retry 5 -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/1.15.10/2020-02-22/bin/linux/amd64/kubectl
     chmod +x ./kubectl
     mv ./kubectl /usr/local/bin/
-    echo "source <(kubectl completion bash)" >> ~/.bashrc
-    retry_command 20 curl --retry 5 -o helm.tar.gz https://storage.googleapis.com/kubernetes-helm/helm-v2.12.2-linux-amd64.tar.gz
+    cat > /etc/profile.d/kubectl.sh <<EOF
+#!/bin/bash
+if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then     PATH="$PATH:/usr/local/bin";   fi
+source <(kubectl completion bash)
+EOF
+    chmod +x /etc//profile.d/kubectl.sh
+    retry_command 20 curl --retry 5 -o helm.tar.gz https://get.helm.sh/helm-v2.16.1-linux-amd64.tar.gz
     tar -xvf helm.tar.gz
     chmod +x ./linux-amd64/helm
     chmod +x ./linux-amd64/tiller
@@ -517,8 +522,7 @@ if [[ ${ENABLE} == "true" ]];then
     else
         echo "BANNER_PATH = ${BANNER_PATH}"
         echo "Creating Banner in ${BANNER_FILE}"
-        echo "curl  -s ${BANNER_PATH} > ${BANNER_FILE}"
-        curl  -s ${BANNER_PATH} > ${BANNER_FILE}
+        aws s3 cp "${BANNER_PATH}" "${BANNER_FILE}"  --region ${BANNER_REGION}
         if [[ -e ${BANNER_FILE} ]] ;then
             echo "[INFO] Installing banner ... "
             echo -e "\n Banner ${BANNER_FILE}" >>/etc/ssh/sshd_config

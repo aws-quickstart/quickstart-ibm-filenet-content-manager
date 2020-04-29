@@ -3,11 +3,8 @@ Description: Create ALBs for FileNet Content Manager components
 Parameters:
   KubeManifestLambdaArn:
     Type: String
-  KubeConfigPath:
+  KubeClusterName:
     Type: String
-  KubeConfigKmsContext:
-    Type: String
-    Default: "EKSQuickStart"
   KubeGetLambdaArn:
     Type: String
   VPCID:
@@ -33,8 +30,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/cpe-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'
@@ -44,8 +40,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/icn-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'   
