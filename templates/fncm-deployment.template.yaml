@@ -7,8 +7,6 @@ Metadata:
         default: Kubernetes parameters
       Parameters:
       - KubeManifestLambdaArn
-      - KubeConfigPath
-      - KubeConfigKmsContext
       - BastionASGName
       - CPERepoURI
       - ICNRepoURI
@@ -17,6 +15,7 @@ Metadata:
       - CRSRepoURI
       - EKSClusterName
       - QSS3BucketName
+      - QSS3BucketRegion
       - QSS3KeyPrefix
       - SSLCertARN
       - NodeInstanceRoleName
@@ -25,10 +24,6 @@ Metadata:
     ParameterLabels:
       KubeManifestLambdaArn:
         default: Kube Manifest Lambda Arn
-      KubeConfigPath:
-        default: Kube Config Path
-      KubeConfigKmsContext:
-        default: Kube Config Kms Context
       CPERepoURI:
         default: CMIS Repo URI
       ICNRepoURI:
@@ -43,6 +38,8 @@ Metadata:
         default: EKS Cluster Name        
       QSS3BucketName:
         default: Quick Start S3 bucket name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 key prefix
       SSLCertARN:
@@ -58,11 +55,8 @@ Metadata:
 Parameters:
   KubeManifestLambdaArn:
     Type: String
-  KubeConfigPath:
+  KubeClusterName:
     Type: String
-  KubeConfigKmsContext:
-    Type: String
-    Default: "EKSQuickStart"
   BastionASGName:
     Description: Auto Scaling Group Name of the Bastion Host
     Type: String
@@ -82,6 +76,10 @@ Parameters:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
     Default: aws-quickstart
     Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/.]*$
     Default: aws-quickstart-fncm/
@@ -96,6 +94,11 @@ Parameters:
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
     Type: String
+  BastionPublicIPCIDR:
+    Description: The CIDR IP range of the bastion host.
+    Type: String
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   # Enable Cloudwatch logging
   fncmQuickStartLogs:
@@ -110,10 +113,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -127,10 +127,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         kind: ClusterRole
@@ -153,10 +150,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         kind: ClusterRoleBinding
@@ -180,10 +174,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -200,10 +191,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Cluster name
       EKSClusterName: !Ref EKSClusterName
       # Kubernetes manifest
@@ -254,8 +242,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -275,8 +262,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -296,8 +282,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -317,8 +302,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -338,8 +322,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -359,8 +342,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -380,8 +362,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -404,8 +385,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -425,8 +405,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -446,8 +425,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -467,8 +445,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -488,8 +465,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -512,8 +488,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -533,8 +508,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -554,8 +528,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -575,8 +548,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -596,8 +568,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -617,8 +588,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -816,10 +786,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -852,10 +819,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -884,10 +848,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: v1
@@ -924,10 +885,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -1060,10 +1018,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -1088,9 +1043,6 @@ Resources:
               name: ibm-dba-contentsearch
               labels:
                 app: ibm-dba-contentsearch
-            spec:
-              imagePullSecrets:
-                - name: docker-registry-secret
             spec:
               affinity:
                 podAntiAffinity:
@@ -1177,10 +1129,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
         apiVersion: apps/v1beta2
@@ -1535,10 +1484,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
@@ -1551,7 +1497,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
-            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR},${BastionPublicIPCIDR}
             alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
           labels:
             app: cpe-ingress
@@ -1570,10 +1516,7 @@ Resources:
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
       ServiceToken: !Ref KubeManifestLambdaArn
-      # S3 path to the encrypted config file eg. s3://my-bucket/kube/config.encrypted
-      KubeConfigPath: !Ref KubeConfigPath
-      # context for KMS to use when decrypting the file
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
@@ -1586,7 +1529,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
-            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR},${BastionPublicIPCIDR}
             alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
           labels:
             app: icn-ingress

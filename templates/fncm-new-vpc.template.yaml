@@ -75,6 +75,7 @@ Metadata:
         default: AWS Quick Start configuration
       Parameters:
       - QSS3BucketName
+      - QSS3BucketRegion
       - QSS3KeyPrefix
     ParameterLabels:
       AvailabilityZones:
@@ -97,6 +98,8 @@ Metadata:
         default: Public subnet 3 CIDR
       QSS3BucketName:
         default: Quick Start S3 bucket name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 key prefix
       RemoteAccessCIDR:
@@ -229,6 +232,10 @@ Parameters:
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
     Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/]*$
     ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
@@ -255,88 +262,56 @@ Parameters:
     Description: "[Optional] The comma-separated list of IAM users/role Amazon Resource Names (ARNs) to be granted admin access to the EKS cluster."
     Type: String
   NodeInstanceType:
-    Default: t2.xlarge
+    Default: t3.xlarge
     AllowedValues:
-    - t2.small
-    - t2.medium
-    - t2.large
-    - t2.xlarge
-    - t2.2xlarge
-    - t3.nano
-    - t3.micro
-    - t3.small
-    - t3.medium
-    - t3.large
-    - t3.xlarge
-    - t3.2xlarge
-    - m3.medium
-    - m3.large
-    - m3.xlarge
-    - m3.2xlarge
-    - m4.large
-    - m4.xlarge
-    - m4.2xlarge
-    - m4.4xlarge
-    - m4.10xlarge
-    - m5.large
-    - m5.xlarge
-    - m5.2xlarge
-    - m5.4xlarge
-    - m5.12xlarge
-    - m5.24xlarge
-    - c4.large
-    - c4.xlarge
-    - c4.2xlarge
-    - c4.4xlarge
-    - c4.8xlarge
-    - c5.large
-    - c5.xlarge
-    - c5.2xlarge
-    - c5.4xlarge
-    - c5.9xlarge
-    - c5.18xlarge
-    - i3.large
-    - i3.xlarge
-    - i3.2xlarge
-    - i3.4xlarge
-    - i3.8xlarge
-    - i3.16xlarge
-    - r3.xlarge
-    - r3.2xlarge
-    - r3.4xlarge
-    - r3.8xlarge
-    - r4.large
-    - r4.xlarge
-    - r4.2xlarge
-    - r4.4xlarge
-    - r4.8xlarge
-    - r4.16xlarge
-    - x1.16xlarge
-    - x1.32xlarge
-    - p2.xlarge
-    - p2.8xlarge
-    - p2.16xlarge
-    - p3.2xlarge
-    - p3.8xlarge
-    - p3.16xlarge
-    - r5.large
-    - r5.xlarge
-    - r5.2xlarge
-    - r5.4xlarge
-    - r5.12xlarge
-    - r5.24xlarge
-    - r5d.large
-    - r5d.xlarge
-    - r5d.2xlarge
-    - r5d.4xlarge
-    - r5d.12xlarge
-    - r5d.24xlarge
-    - z1d.large
-    - z1d.xlarge
-    - z1d.2xlarge
-    - z1d.3xlarge
-    - z1d.6xlarge
-    - z1d.12xlarge
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+      - x1.16xlarge
+      - x1.32xlarge
+      - p3.2xlarge
+      - p3.8xlarge
+      - p3.16xlarge
+      - r5.large
+      - r5.xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.12xlarge
+      - r5.24xlarge
+      - r5d.large
+      - r5d.xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.12xlarge
+      - r5d.24xlarge
+      - z1d.large
+      - z1d.xlarge
+      - z1d.2xlarge
+      - z1d.3xlarge
+      - z1d.6xlarge
+      - z1d.12xlarge
     ConstraintDescription: Must be a valid EC2 instance type
     Description: The type of EC2 instance for the node instances.
     Type: String
@@ -557,6 +532,7 @@ Parameters:
     Type: String
 ## Conditions ##
 Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
   # If the Entitlement Key entered by an IBMer, we need the keyword "iamapikey" keyword in front of the API Key in this format: "iamapikey:xxxxxxxxxxxxxx" (where xxxxxxxxxxxxxx is the API Key)
   IsIAMAPIKey: !Equals [ !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]], "iamapikey"]
   ContentGraphQL: !Equals [ !Ref DeployContentGraphQL, "true"]
@@ -565,7 +541,10 @@ Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template'
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         AvailabilityZones: !Join [ ',', !Ref 'AvailabilityZones' ]
         KeyPairName: !Ref 'KeyPairName'
@@ -584,21 +563,39 @@ Resources:
   FNCMIAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-iam.template.yaml'
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-iam.template.yaml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         ORAFilesLocation: !Ref ORAFilesLocation
-  EKSStack:
+  FNCMCleanupVPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/templates/amazon-eks.template.yaml'
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-vpc-cleanup.template.yaml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        VPCID: !GetAtt VPCStack.Outputs.VPCID
+  EKSStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: FNCMCleanupVPCStack
+    Properties:
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/quickstart-amazon-eks/templates/amazon-eks.template.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         PublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
         PublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
         PublicSubnet3ID: !GetAtt VPCStack.Outputs.PublicSubnet3ID
         EfsStorageClass: Enabled
         KeyPairName: !Ref KeyPairName
-        QSS3BucketName: !Ref QSS3BucketName
+        EKSClusterLoggingTypes: "api,audit,authenticator,controllerManager,scheduler"
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-amazon-eks/"
         PrivateSubnet1ID: !GetAtt VPCStack.Outputs.PrivateSubnet1AID
         PrivateSubnet2ID: !GetAtt VPCStack.Outputs.PrivateSubnet2AID
@@ -609,16 +606,22 @@ Resources:
         LambdaZipsBucketName: !Ref LambdaZipsBucketName
         NodeInstanceType: !Ref NodeInstanceType
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
-        BastionBootstrapScript: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
+        BastionBootstrapScript: !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/bastion_bootstrap.sh'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         BastionIAMRoleName: !GetAtt FNCMIAMStack.Outputs.BastionRole
-        AdditionalEKSAdminArns: !Join [ ",", [!Ref AdditionalEKSAdminArns, !GetAtt FNCMIAMStack.Outputs.BastionRoleARN] ]
+        AdditionalEKSAdminRoleArn: !GetAtt FNCMIAMStack.Outputs.BastionRoleARN
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         KubernetesVersion: !Ref KubernetesVersion
   FNCMSGStack:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-sg.template.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-sg.template.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         VPCCIDR: !Ref VPCCIDR
         BastionSecurityGroup: !GetAtt EKSStack.Outputs.BastionSecurityGroup
@@ -628,7 +631,10 @@ Resources:
     DependsOn: FNCMSGStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-ecr.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-create-ecr.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
         IAMAPIKeyword: !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]]
@@ -637,7 +643,10 @@ Resources:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/cleanup-ecr.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/cleanup-ecr.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         CPERepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CPEArn']]
         CSSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CSSArn']]
@@ -648,7 +657,10 @@ Resources:
     DependsOn: FNCMECRStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-docker-registry.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-docker-registry.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         DockerRegistryEntitlementKey: !Ref 'DockerRegistryEntitlementKey'
@@ -666,7 +678,10 @@ Resources:
     DependsOn: EKSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-oracle.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-oracle.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         DBInstanceClass: !Ref 'DBInstanceClass'
         DBInstanceIdentifier: !Ref 'DBInstanceIdentifier'
@@ -686,7 +701,10 @@ Resources:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-microsoft-ad-1.template'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-microsoft-ad-1.template'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         ADServer1InstanceType: !Ref 'ADServer1InstanceType'
         ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
@@ -701,7 +719,8 @@ Resources:
         KeyPairName: !Ref 'KeyPairName'
         PrivateSubnet1ID: !GetAtt 'VPCStack.Outputs.PrivateSubnet1AID'
         PrivateSubnet2ID: !GetAtt 'VPCStack.Outputs.PrivateSubnet2AID'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         VPCCIDR: !GetAtt 'VPCStack.Outputs.VPCCIDR'
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
@@ -709,7 +728,10 @@ Resources:
     DependsOn: ADStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/templates/rdgw-domain.template'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/templates/rdgw-domain.template'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         DomainAdminPassword: !Ref 'DomainAdminPassword'
         DomainAdminUser: !Ref 'DomainAdminUser'
@@ -720,7 +742,8 @@ Resources:
         NumberOfRDGWHosts: !Ref 'NumberOfRDGWHosts'
         PublicSubnet1ID: !GetAtt 'VPCStack.Outputs.PublicSubnet1ID'
         PublicSubnet2ID: !GetAtt 'VPCStack.Outputs.PublicSubnet2ID'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-microsoft-activedirectory/submodules/quickstart-microsoft-rdgateway/"
         RDGWInstanceType: !Ref 'RDGWInstanceType'
         RDGWCIDR: !Ref 'RDGWCIDR'
@@ -730,7 +753,10 @@ Resources:
     DependsOn: ADStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-microsoft-ad-populate.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-microsoft-ad-populate.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         ADServer1NetBIOSName: !Ref 'ADServer1NetBIOSName'
         DomainAdminPassword: !Ref 'DomainAdminPassword'
@@ -738,7 +764,7 @@ Resources:
         DomainDNSName: !Ref 'DomainDNSName'
         DomainNetBIOSName: !Ref 'DomainNetBIOSName'
         DCInstanceId: !GetAtt 'ADStack.Outputs.DC1InstanceId'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the Oracle tablespaces and users for FNCM
@@ -746,7 +772,10 @@ Resources:
     DependsOn: RDSStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-oracle-objects.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-oracle-objects.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         DBName: !Ref 'DBName'
         DBUser: !Ref 'DBUser'
@@ -755,7 +784,7 @@ Resources:
         EndpointPort: !GetAtt 'RDSStack.Outputs.MasterEndpointPort'
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         ORAFilesLocation: !Ref 'ORAFilesLocation'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create the CPE and ICN container XML files
@@ -763,7 +792,10 @@ Resources:
     DependsOn: [PopulateActiveDirectoryDS, RDSObjectCreation]
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-container-configuration-files.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-container-configuration-files.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         DBName: !Ref 'DBName'
         DBPassword: !Ref 'DBPassword'
@@ -774,7 +806,8 @@ Resources:
         BaseDN2: !Select [ 1, !Split [ ".", !Ref 'DomainDNSName' ] ]
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         ORAFilesLocation: !Ref 'ORAFilesLocation'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Create PVs, PVCs, deploy CPE, CSS, ICN, CRS, and CMIS
@@ -783,11 +816,13 @@ Resources:
     DependsOn: ContainerConfigFiles
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-deployment.template.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-deployment.template.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
-        KubeConfigKmsContext: "EKSQuickStart"
         KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
+        KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CPERepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CPERepoURI
         ICNRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.ICNRepoURI
@@ -795,23 +830,27 @@ Resources:
         CSSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CSSRepoURI
         CRSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CRSRepoURI
         EKSClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         SSLCertARN: !Ref SSLCertARN
         NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-create-albs.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-create-albs.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
-        KubeConfigKmsContext: "EKSQuickStart"
         KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
         KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         VPCPublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
         VPCPublicSubnet2ID: !GetAtt VPCStack.Outputs.PublicSubnet2ID
@@ -821,7 +860,10 @@ Resources:
     DependsOn: FNCMLoadBalancerStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-initialization.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-initialization.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         CPENodeName: 'cpe-ingress'
         CPENodePort: '80'
@@ -830,7 +872,7 @@ Resources:
         BaseDN1: !Select [ 0, !Split [ ".", !Ref 'DomainDNSName' ] ]
         BaseDN2: !Select [ 1, !Split [ ".", !Ref 'DomainDNSName' ] ]
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
 # Create the ICN Desktop and Repository
@@ -838,7 +880,10 @@ Resources:
     DependsOn: CPEInitialization
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-navigator-initialization.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-navigator-initialization.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
         CPENodeName: 'cpe-ingress'
         CPENodePort: '80'
@@ -846,7 +891,7 @@ Resources:
         ICNNodePort: '80'
         DomainAdminPassword: !Ref 'DomainAdminPassword'
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
-        QSS3BucketName: !Ref 'QSS3BucketName'
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref 'QSS3KeyPrefix'
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
   # Configure and deploy the Content Services GraphQL container 
@@ -855,43 +900,49 @@ Resources:
     Condition: ContentGraphQL
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-crs-deploy.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-crs-deploy.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
-        KubeConfigKmsContext: "EKSQuickStart"
         KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
         KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CRSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CRSRepoURI
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         SSLCertARN: !Ref SSLCertARN
         FNCMNameSpace: "fncm"
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
   # Configure and deploy the Content Services GraphQL container 
   CMISDeploymentStack:
     DependsOn: ICNInitialization
     Condition: CMIS
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/fncm-cmis-deploy.yaml'
+      TemplateURL: !Sub
+      - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/fncm-cmis-deploy.yaml'
+      - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+        S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeConfigPath: !GetAtt EKSStack.Outputs.KubeConfigPath
-        KubeConfigKmsContext: "EKSQuickStart"
         KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
         KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
+        KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CMISRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CMISRepoURI
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+        QSS3BucketRegion: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         SSLCertARN: !Ref SSLCertARN
         FNCMNameSpace: "fncm"
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR        
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
 Outputs:
-  KubeConfigPath:
-    Value: !GetAtt EKSStack.Outputs.KubeConfigPath
   BastionIP:
     Value: !GetAtt EKSStack.Outputs.BastionIP
   MasterJDBCConnectionString:

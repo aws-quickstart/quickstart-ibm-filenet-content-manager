@@ -7,10 +7,9 @@ Metadata:
         default: Kubernetes parameters
       Parameters:
       - KubeManifestLambdaArn
-      - KubeConfigPath
-      - KubeConfigKmsContext
       - KubeGetLambdaArn
       - QSS3BucketName
+      - QSS3BucketRegion
       - QSS3KeyPrefix
       - CRSRepoURI
       - SSLCertARN
@@ -21,16 +20,14 @@ Metadata:
     ParameterLabels:
       KubeManifestLambdaArn:
         default: Kube Manifest Lambda Arn
-      KubeConfigPath:
-        default: Kube Config Path
-      KubeConfigKmsContext:
-        default: Kube Config Kms Context
       CRSRepoURI:
         default: CRS Repo URI
       KubeGetLambdaArn:
         default: Kube Get Lambda Arn
       QSS3BucketName:
         default: Quick Start S3 bucket name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 key prefix
       SSLCertARN:
@@ -46,11 +43,8 @@ Metadata:
 Parameters:
   KubeManifestLambdaArn:
     Type: String
-  KubeConfigPath:
+  KubeClusterName:
     Type: String
-  KubeConfigKmsContext:
-    Type: String
-    Default: "EKSQuickStart"
   CRSRepoURI:
     Type: String
   KubeGetLambdaArn:
@@ -61,6 +55,10 @@ Parameters:
     Description: The S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
     Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/.]*$
@@ -84,6 +82,11 @@ Parameters:
   RemoteAccessCIDR:
     Description: The CIDR IP range that is permitted to access the load balancers.
     Type: String
+  BastionPublicIPCIDR:
+    Description: The CIDR IP range of the bastion host.
+    Type: String
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   # Create CRS container PVCs
   CreateCRSConfigPVC:
@@ -91,8 +94,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref 'KubeManifestLambdaArn'
-      KubeConfigPath: !Ref 'KubeConfigPath'
-      KubeConfigKmsContext: !Ref 'KubeConfigKmsContext'
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -111,8 +113,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: PersistentVolumeClaim
@@ -167,7 +168,7 @@ Resources:
                   - ' '
                   - - '"aws"'
                     - 's3 cp'
-                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_cors.TEMPLATE'
+                    - 's3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/FNCM_cors.template'
                     - '/home/ec2-user/cors.xml'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
@@ -302,8 +303,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
         kind: Service
@@ -333,8 +333,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: apps/v1beta2
         kind: Deployment
@@ -440,8 +439,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeManifestLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Manifest: !Sub |
         apiVersion: extensions/v1beta1
         kind: Ingress
@@ -453,7 +451,7 @@ Resources:
             alb.ingress.kubernetes.io/scheme: internet-facing
             alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
             alb.ingress.kubernetes.io/certificate-arn: ${SSLCertARN}
-            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR}
+            alb.ingress.kubernetes.io/inbound-cidrs: ${RemoteAccessCIDR},${BastionPublicIPCIDR}
             alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
           labels:
             app: crs-ingress
@@ -472,8 +470,7 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !Ref KubeGetLambdaArn
-      KubeConfigPath: !Ref KubeConfigPath
-      KubeConfigKmsContext: !Ref KubeConfigKmsContext
+      ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/crs-ingress'
       JsonPath: '{.status.loadBalancer.ingress[0].hostname}'

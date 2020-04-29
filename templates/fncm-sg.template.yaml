@@ -57,6 +57,10 @@ Resources:
                 Action:
                   - "autoscaling:DescribeAutoScalingGroups"
                 Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:DescribeInstances"
+                Resource: "*"
 
   DescribeStackResourcesLambda:
     Type: "AWS::Lambda::Function"
@@ -99,6 +103,19 @@ Resources:
                   print(e)
                   return str(e)
 
+          def extract_bastion_ip(instance_id):
+              try:
+                  ec2_client = boto3.client('ec2')
+                  responseEc2 = ec2_client.describe_instances(InstanceIds=[instance_id])
+                  print("InstanceId: {}".format(instance_id))
+                  print("Response EC2:")
+                  print(responseEc2['Reservations'][0]['Instances'])
+                  BASTION_PUBLIC_IP = responseEc2['Reservations'][0]['Instances'][0]['PublicIpAddress']
+                  return BASTION_PUBLIC_IP
+              except Exception as e:
+                  print(e)
+                  return str(e)
+
           def handler(event, context):
             print('Received event: %s' % json.dumps(event))
             status = cfnresponse.SUCCESS
@@ -110,7 +127,9 @@ Resources:
                     BASTION_ASG_NAME = event['ResourceProperties']['BastionASGName']
                     responseData = {}
                     responseData['efs_fs_id'] = extract_fs_id(EKS_STACK_ID)
-                    responseData['bastion_instance_id'] = extract_bastion_instance_id(BASTION_ASG_NAME)
+                    bastion_instance_id = extract_bastion_instance_id(BASTION_ASG_NAME)
+                    responseData['bastion_instance_id'] = bastion_instance_id
+                    responseData['bastion_public_ip'] = extract_bastion_ip(bastion_instance_id)
                     print(responseData)
                     cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
             except Exception as e:
@@ -119,7 +138,7 @@ Resources:
                 cfnresponse.send(event, context, status, {}, None)
       Handler: "index.handler"
       Runtime: "python3.6"
-      Timeout: 5
+      Timeout: 60
       Role: !GetAtt DescribeStackRole.Arn
 
   GetStackResources:
@@ -271,3 +290,11 @@ Resources:
 Outputs:
   FNCMSSMSendCommandLambdaRoleArn:
     Value: !GetAtt FNCMSSMSendCommandLambdaRole.Arn
+  FSID:
+    Value: !GetAtt GetStackResources.efs_fs_id
+  BastionInstanceID:
+    Value: !GetAtt GetStackResources.bastion_instance_id
+  BastionPublicIP:
+    Value: !GetAtt GetStackResources.bastion_public_ip
+  BastionPublicIPCIDR:
+    Value: !Sub '${GetStackResources.bastion_public_ip}/32'
