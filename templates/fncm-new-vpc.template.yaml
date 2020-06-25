@@ -837,6 +837,7 @@ Resources:
         NodeInstanceRoleName: !GetAtt EKSStack.Outputs.NodeInstanceRoleName
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
   # Create ALBs for CPE, ICN, etc
   FNCMLoadBalancerStack:
     DependsOn: FNCMDeploymentStack
@@ -916,6 +917,7 @@ Resources:
         FNCMNameSpace: "fncm"
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
   # Configure and deploy the Content Services GraphQL container 
   CMISDeploymentStack:
     DependsOn: ICNInitialization
@@ -938,7 +940,8 @@ Resources:
         SSLCertARN: !Ref SSLCertARN
         FNCMNameSpace: "fncm"
         FNCMSSMSendCommandLambdaRoleARN: !GetAtt FNCMSGStack.Outputs.FNCMSSMSendCommandLambdaRoleArn
-        RemoteAccessCIDR: !Ref RemoteAccessCIDR        
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
 Outputs:
   BastionIP:
     Value: !GetAtt EKSStack.Outputs.BastionIP
