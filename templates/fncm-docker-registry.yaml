@@ -22,6 +22,21 @@ Parameters:
   CMISRepoName:
     Type: String
     Description: Randomly generated CMIS docker repo name from ECR
+  CPETag:
+    Type: String
+    Description: CPE Container tag
+  ICNTag:
+    Type: String
+    Description: ICN Container tag
+  CSSTag:
+    Type: String
+    Description: CSS Container tag
+  CRSTag:
+    Type: String
+    Description: GraphQL Container tag
+  CMISTag:
+    Type: String
+    Description: CMIS Container tag
   ECRRegion:
     Description: Region where ECR is located
     Type: String
@@ -34,7 +49,6 @@ Parameters:
   FNCMSSMSendCommandLambdaRoleARN:
     Type: String
     Description: ARN of the role to allow SSM SendCommand action for AWS Lambda service.
-
 Resources:
   LoginPullPushContainers:
     Type: 'AWS::SSM::Document'
@@ -68,7 +82,8 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref CPERepoName
-                - ':ga-554-p8cpe-if001'
+                - ':'
+                - !Ref 'CPETag'
             type: String
           ICNRepoURI:
             default: !Join
@@ -78,7 +93,8 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref ICNRepoName
-                - ':ga-307-icn-if002'
+                - ':'
+                - !Ref 'ICNTag'
             type: String
           CSSRepoURI:
             default: !Join
@@ -88,7 +104,8 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref CSSRepoName
-                - ':ga-554-p8css-if001'
+                - ':'
+                - !Ref 'CSSTag'
             type: String
           CRSRepoURI:
             default: !Join
@@ -98,7 +115,8 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref CRSRepoName
-                - ':ga-554-p8cgql-if001'
+                - ':'
+                - !Ref 'CRSTag'
             type: String
           CMISRepoURI:
             default: !Join
@@ -108,7 +126,28 @@ Resources:
                 - !Ref ECRRegion
                 - '.amazonaws.com/'
                 - !Ref CMISRepoName
-                - ':ga-304-cmis-if010'
+                - ':'
+                - !Ref 'CMISTag'
+            type: String
+          CPETag:
+            default: !Ref 'CPETag'
+            description: The CPE container tag
+            type: String
+          CSSTag:
+            default: !Ref 'CSSTag'
+            description: The CSS container tag
+            type: String
+          CRSTag:
+            default: !Ref 'CRSTag'
+            description: The GraphQL container tag
+            type: String
+          ICNTag:
+            default: !Ref 'ICNTag'
+            description: The ICN container tag
+            type: String
+          CMISTag:
+            default: !Ref 'CMISTag'
+            description: The CMIS container tag
             type: String
         mainSteps:
           - action: 'aws:runShellScript'
@@ -131,7 +170,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/css:ga-554-p8css-if001'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/css:{{CSSTag}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCPEContainer
@@ -142,7 +181,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/cpe:ga-554-p8cpe-if001'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cpe:{{CPETag}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullICNContainer
@@ -153,7 +192,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/ban/navigator:ga-307-icn-if002'
+                    - 'pull cp.icr.io/cp/cp4a/ban/navigator:{{ICNTag}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCMISContainer
@@ -164,7 +203,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if010'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/cmis:{{CMISTag}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: PullCQLContainer
@@ -175,7 +214,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'pull cp.icr.io/cp/cp4a/fncm/graphql:ga-554-p8cgql-if001'
+                    - 'pull cp.icr.io/cp/cp4a/fncm/graphql:{{CRSTag}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCSSContainer
@@ -186,7 +225,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/css:ga-554-p8css-if001 {{CSSRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/css:{{CSSTag}} {{CSSRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCPEContainer
@@ -197,7 +236,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/cpe:ga-554-p8cpe-if001 {{CPERepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cpe:{{CPETag}} {{CPERepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagICNContainer
@@ -208,7 +247,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/ban/navigator:ga-307-icn-if002 {{ICNRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/ban/navigator:{{ICNTag}} {{ICNRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCMISContainer
@@ -219,7 +258,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/cmis:ga-304-cmis-if010 {{CMISRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/cmis:{{CMISTag}} {{CMISRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: TagCRSContainer
@@ -230,7 +269,7 @@ Resources:
                 - !Join
                   - ' '
                   - - '"/usr/bin/docker"'
-                    - 'tag cp.icr.io/cp/cp4a/fncm/graphql:ga-554-p8cgql-if001 {{CRSRepoURI}}'
+                    - 'tag cp.icr.io/cp/cp4a/fncm/graphql:{{CRSTag}} {{CRSRepoURI}}'
               workingDirectory: '/home/ec2-user'
           - action: 'aws:runShellScript'
             name: ExecuteAWSGetECRLogin
@@ -372,7 +411,8 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref CPERepoName
-        - ':ga-554-p8cpe-if001'
+        - ':'
+        - !Ref 'CPETag'
   ICNRepoURI:
     Value: !Join
       - ''
@@ -381,7 +421,8 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref ICNRepoName
-        - ':ga-307-icn-if002'
+        - ':'
+        - !Ref 'ICNTag'
   CMISRepoURI:
     Value: !Join
       - ''
@@ -390,7 +431,8 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref CMISRepoName
-        - ':ga-304-cmis-if010'
+        - ':'
+        - !Ref 'CMISTag'
   CSSRepoURI:
     Value: !Join
       - ''
@@ -399,7 +441,8 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref CSSRepoName
-        - ':ga-554-p8css-if001'
+        - ':'
+        - !Ref 'CSSTag'
   CRSRepoURI:
     Value: !Join
       - ''
@@ -408,4 +451,5 @@ Outputs:
         - !Ref ECRRegion
         - '.amazonaws.com/'
         - !Ref CRSRepoName
-        - ':ga-554-p8cgql-if001'
+        - ':'
+        - !Ref 'CRSTag'

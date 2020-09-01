@@ -71,6 +71,11 @@ Metadata:
       - DockerRegistryEntitlementKey
       - DeployContentGraphQL
       - DeployCMIS
+      - CPEContainerTag
+      - CSSContainerTag
+      - CRSContainerTag
+      - CMISContainerTag
+      - ICNContainerTag
     - Label:
         default: AWS Quick Start configuration
       Parameters:
@@ -120,6 +125,7 @@ Metadata:
         default: Node group name
       NodeVolumeSize:
         default: Node volume size
+# FileNet Content Manager parameters
       FNCMVersion:
         default: Version of FileNet Content Manager
       DockerRegistryEntitlementKey:
@@ -128,6 +134,16 @@ Metadata:
         default: Deploy and configure the Content Services GraphQL component
       DeployCMIS:
         default: Deploy and configure the Content Management Interoperability Services component
+      CPEContainerTag:
+        default: The Content Platform Engine container tag
+      CSSContainerTag:
+        default: The Content Search Services container tag
+      CRSContainerTag:
+        default: The Content Services GraphQL container tag
+      CMISContainerTag:
+        default: The Content Management Interoperability Services container tag
+      ICNContainerTag:
+        default: The Content Navigator container tag        
       # Oracle RDS Parameters
       ORAFilesLocation:
         default: Location of the downloaded Oracle client
@@ -337,10 +353,10 @@ Parameters:
     Type: String
     AllowedValues: [ "1.14" , "1.13" ]
     Default: "1.14"
+# FileNet Content Manager parameters    
   FNCMVersion:
     Type: String
-    Default: "FileNet Content Manager 5.5.4"
-    AllowedValues: [ "FileNet Content Manager 5.5.4" ]
+    Default: "FileNet Content Manager 5.5.5"
     Description: The version of FileNet Content Manager to be deployed by this Quick Start.
   DockerRegistryEntitlementKey:
     Type: String
@@ -360,7 +376,27 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
-    Default: 'false'    
+    Default: 'false'
+  CPEContainerTag:
+    Type: String
+    Description: The Content Platform Engine container tag
+    Default: "ga-555-p8cpe"
+  CSSContainerTag:
+    Type: String
+    Description: The Content Search Services container tag
+    Default: "ga-555-p8css"
+  CRSContainerTag:
+    Type: String
+    Description: The Content Services GraphQL container tag
+    Default: "ga-555-p8cgql"
+  CMISContainerTag:
+    Type: String
+    Description: The Content Management Interoperability Services container tag
+    Default: "ga-305-cmis"
+  ICNContainerTag:
+    Type: String
+    Description: The Content Navigator Container tag
+    Default: "ga-308-icn"
 # Oracle RDS Database Parameters
   ORAFilesLocation:
     Description: Provide the S3 location of the downloaded Oracle client files (please do not include the s3:// and the trailing forward slash).
@@ -669,6 +705,11 @@ Resources:
         ICNRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.ICNArn']]
         CRSRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CRSArn']]
         CMISRepoName: !Select [ "1", !Split [ "/", !GetAtt 'FNCMECRStack.Outputs.CMISArn']]
+        CPETag: !Ref 'CPEContainerTag'
+        CSSTag: !Ref 'CSSContainerTag'
+        ICNTag: !Ref 'ICNContainerTag'
+        CRSTag: !Ref 'CRSContainerTag'
+        CMISTag: !Ref  'CMISContainerTag'
         ECRRegion: !Select [ "3", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         ECROrg: !Select [ "4", !Split [ ":", !GetAtt 'FNCMECRStack.Outputs.CPEArn' ]]
         FinalLogin: !If [IsIAMAPIKey, !GetAtt 'FNCMECRStack.Outputs.IBMLogin', !GetAtt 'FNCMECRStack.Outputs.CustomerLogin']
