@@ -6,7 +6,6 @@ Metadata:
     - Label:
         default: Kubernetes parameters
       Parameters:
-      - KubeManifestLambdaArn
       - BastionASGName
       - CPERepoURI
       - ICNRepoURI
@@ -22,8 +21,6 @@ Metadata:
       - FNCMSSMSendCommandLambdaRoleARN
       - RemoteAccessCIDR
     ParameterLabels:
-      KubeManifestLambdaArn:
-        default: Kube Manifest Lambda Arn
       CPERepoURI:
         default: CMIS Repo URI
       ICNRepoURI:
@@ -53,8 +50,6 @@ Metadata:
       RemoteAccessCIDR:
         default: CIDR IP range that is permitted to access the load balancers
 Parameters:
-  KubeManifestLambdaArn:
-    Type: String
   KubeClusterName:
     Type: String
   BastionASGName:
@@ -112,7 +107,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -126,7 +121,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -149,7 +144,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -173,7 +168,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -190,7 +185,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Cluster name
       EKSClusterName: !Ref EKSClusterName
@@ -241,7 +236,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -261,7 +256,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -281,7 +276,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -301,7 +296,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -321,7 +316,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -341,7 +336,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -361,7 +356,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -384,7 +379,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -404,7 +399,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -424,7 +419,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -444,7 +439,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -464,7 +459,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -487,7 +482,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -507,7 +502,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -527,7 +522,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -547,7 +542,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -567,7 +562,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -587,7 +582,7 @@ Resources:
     Type: "Custom::KubeManifest"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
         apiVersion: v1
@@ -785,7 +780,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -818,7 +813,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -847,7 +842,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -884,7 +879,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -1017,7 +1012,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -1128,7 +1123,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
@@ -1483,7 +1478,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |
@@ -1515,7 +1510,7 @@ Resources:
     Version: '1.0'
     Properties:
       # The lambda function that executes the manifest against the cluster. This is created in one of the parent stacks
-      ServiceToken: !Ref KubeManifestLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest: !Sub |

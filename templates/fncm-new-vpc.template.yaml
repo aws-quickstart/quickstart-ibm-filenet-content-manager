@@ -351,8 +351,8 @@ Parameters:
   KubernetesVersion:
     Description: The Kubernetes version of the Amazon EKS cluster.
     Type: String
-    AllowedValues: [ "1.14" , "1.13" ]
-    Default: "1.14"
+    AllowedValues: [ "1.16" , "1.15" ]
+    Default: "1.16"
 # FileNet Content Manager parameters    
   FNCMVersion:
     Type: String
@@ -862,7 +862,6 @@ Resources:
       - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
         KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CPERepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CPERepoURI
@@ -889,8 +888,6 @@ Resources:
       - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
-        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
         KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         VPCID: !GetAtt VPCStack.Outputs.VPCID
         VPCPublicSubnet1ID: !GetAtt VPCStack.Outputs.PublicSubnet1ID
@@ -946,8 +943,6 @@ Resources:
       - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
-        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
         KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CRSRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CRSRepoURI
@@ -970,8 +965,6 @@ Resources:
       - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
         S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
-        KubeManifestLambdaArn: !GetAtt EKSStack.Outputs.KubeManifestLambdaArn
-        KubeGetLambdaArn: !GetAtt EKSStack.Outputs.KubeGetLambdaArn
         KubeClusterName: !GetAtt EKSStack.Outputs.EKSClusterName
         BastionASGName: !GetAtt 'EKSStack.Outputs.BastionAutoScalingGroup'
         CMISRepoURI: !GetAtt FNCMDockerRegistryStack.Outputs.CMISRepoURI

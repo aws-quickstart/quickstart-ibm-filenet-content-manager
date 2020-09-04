@@ -1,11 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Create ALBs for FileNet Content Manager components
 Parameters:
-  KubeManifestLambdaArn:
-    Type: String
   KubeClusterName:
-    Type: String
-  KubeGetLambdaArn:
     Type: String
   VPCID:
     Type: String
@@ -29,7 +25,7 @@ Resources:
     Type: "Custom::KubeGet"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeGetLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeGet-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/cpe-ingress'
@@ -39,7 +35,7 @@ Resources:
     Type: "Custom::KubeGet"
     Version: '1.0'
     Properties:
-      ServiceToken: !Ref KubeGetLambdaArn
+      ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeGet-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Namespace: fncm
       Name: 'ing/icn-ingress'
