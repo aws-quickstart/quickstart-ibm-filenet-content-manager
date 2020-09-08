@@ -325,7 +325,7 @@ Resources:
       ServiceToken: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:EKS-QuickStart-KubeManifest-${KubeClusterName}"
       ClusterName: !Ref KubeClusterName
       Manifest:
-        apiVersion: apps/v1beta2
+        apiVersion: apps/v1
         kind: Deployment
         metadata:
           name: fncm-crs

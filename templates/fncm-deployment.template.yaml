@@ -883,7 +883,7 @@ Resources:
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
-        apiVersion: apps/v1beta2
+        apiVersion: apps/v1
         kind: Deployment
         metadata:
           name: fncm-cpe
@@ -1016,7 +1016,7 @@ Resources:
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
-        apiVersion: apps/v1beta2
+        apiVersion: apps/v1
         kind: Deployment
         metadata:
           name: fncm-css
@@ -1127,7 +1127,7 @@ Resources:
       ClusterName: !Ref KubeClusterName
       # Kubernetes manifest
       Manifest:
-        apiVersion: apps/v1beta2
+        apiVersion: apps/v1
         kind: Deployment
         metadata:
           name: fncm-icn
