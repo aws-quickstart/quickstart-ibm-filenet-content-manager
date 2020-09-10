@@ -567,6 +567,9 @@ fi
 yum -y install docker
 service docker start
 
+yum install java-1.8.0 -y
+yum install java-1.8.0-devel -y
+
 prevent_process_snooping
 request_eip
 install_kubernetes_client_tools
