@@ -21,6 +21,7 @@ tests:
   fncm-1:
     parameters:
       AvailabilityZones: $[taskcat_genaz_3]
+      CreateRDGW: 'No'
       DBPassword: $[taskcat_genpass_8A]
       DockerRegistryEntitlementKey: override
       DomainAdminPassword: $[taskcat_genpass_12A]

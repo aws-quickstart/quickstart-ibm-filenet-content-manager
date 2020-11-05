@@ -16,6 +16,7 @@ Metadata:
       - PublicSubnet3CIDR
       - RemoteAccessCIDR
       # Microsoft Active Directory - Remote Desktop Gateway
+      - DeployRDGW
       - RDGWCIDR
     - Label:
         default: Amazon EC2 configuration
@@ -85,6 +86,8 @@ Metadata:
     ParameterLabels:
       AvailabilityZones:
         default: Availability Zones
+      DeployRDGW:
+        default: Deploy RD Gateway
       KeyPairName:
         default: Key pair name
       SSLCertARN:
@@ -194,6 +197,13 @@ Parameters:
       Availability Zones are used for this deployment, and the logical order of your
       selections is preserved.
     Type: List<AWS::EC2::AvailabilityZone::Name>
+  DeployRDGW:
+    Description: Deploy Remote Desktop Gateway
+    Type: String
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+    Default: 'Yes'
   KeyPairName:
     Description: The name of an existing public/private key pair, which allows you
       to securely connect to your instance after it launches.
@@ -573,6 +583,7 @@ Conditions:
   IsIAMAPIKey: !Equals [ !Select ["0", !Split [":", !Ref DockerRegistryEntitlementKey]], "iamapikey"]
   ContentGraphQL: !Equals [ !Ref DeployContentGraphQL, "true"]
   CMIS: !Equals [ !Ref DeployCMIS, "true"]
+  CreateRDGW: !Equals [!Ref DeployRDGW, 'Yes']
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
@@ -767,6 +778,7 @@ Resources:
         VPCID: !GetAtt 'VPCStack.Outputs.VPCID'
   RDGWStack:
     DependsOn: ADStack
+    Condition: CreateRDGW
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub
