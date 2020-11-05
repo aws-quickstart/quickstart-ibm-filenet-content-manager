@@ -989,8 +989,10 @@ Resources:
         RemoteAccessCIDR: !Ref RemoteAccessCIDR
         BastionPublicIPCIDR: !GetAtt FNCMSGStack.Outputs.BastionPublicIPCIDR
 Outputs:
-  BastionIP:
-    Value: !GetAtt EKSStack.Outputs.BastionIP
+  BastionHostURL:
+    Condition: CreateRDGW
+    Description: URL for Bastion Host load balancer
+    Value: !GetAtt RDGWStack.Outputs.RDPURL
   MasterJDBCConnectionString:
     Description: JDBC connection string for the master database
     Value: !GetAtt 'RDSStack.Outputs.MasterJDBCConnectionString'
