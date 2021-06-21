@@ -77,7 +77,7 @@ Resources:
     Properties:
       Description: Removes an ECR Repository.
       Handler: index.handler
-      Runtime: python2.7
+      Runtime: python3.7
       Role: !GetAtt 'RepoCleanupRole.Arn'
       Timeout: 240
       Code:
@@ -111,7 +111,7 @@ Resources:
               )
 
           def handler(event, context):
-            print "Received event: %s" % json.dumps(event)
+            print("Received event: %s" % json.dumps(event))
 
             status = cfnresponse.FAILED
             new_physical_id = None
@@ -126,7 +126,7 @@ Resources:
                 'Delete': delete
               }.get(event['RequestType'], lambda x, y: (cfnresponse.FAILED, None))(properties, physical_id)
             except Exception as e:
-              print "Exception: %s" % e
+              print("Exception: %s" % e)
               status = cfnresponse.FAILED
             finally:
               cfnresponse.send(event, context, status, {}, new_physical_id)
